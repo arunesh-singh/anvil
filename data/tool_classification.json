@@ -1,0 +1,1821 @@
+{
+  "summary": {
+    "total": 259,
+    "buckets": {
+      "DEFERRED-CLOUD": 33,
+      "DROPPED": 7,
+      "ONDEVICE-DET": 139,
+      "ONDEVICE-LLM": 56,
+      "ONDEVICE-ML": 23
+    },
+    "note": "Reclassified 2026-07-03: eps/vsd/vsdx/from-msg -> DEFERRED-CLOUD (no on-device engine exists: Ghostscript / Visio renderer / .msg parser); translate + tiff-to-text -> ONDEVICE-ML (OCR/MT models). 2026-08-27: pdf/annotate merged into pdf/add-text (richer text tool) -> 218 on-device tools; buckets sum 258 vs 259 scraped."
+  },
+  "tools": [
+    {
+      "category": "converter",
+      "slug": "azw3-to-epub",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/converter/azw3-to-epub"
+    },
+    {
+      "category": "converter",
+      "slug": "azw3-to-mobi",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/converter/azw3-to-mobi"
+    },
+    {
+      "category": "converter",
+      "slug": "epub-to-azw3",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/converter/epub-to-azw3"
+    },
+    {
+      "category": "converter",
+      "slug": "epub-to-mobi",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/converter/epub-to-mobi"
+    },
+    {
+      "category": "converter",
+      "slug": "excel-to-pdf",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/converter/excel-to-pdf"
+    },
+    {
+      "category": "converter",
+      "slug": "mobi-to-azw3",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/converter/mobi-to-azw3"
+    },
+    {
+      "category": "converter",
+      "slug": "mobi-to-epub",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/converter/mobi-to-epub"
+    },
+    {
+      "category": "image",
+      "slug": "ai-art-generator",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/image/ai-art-generator"
+    },
+    {
+      "category": "image",
+      "slug": "ai-image-generator",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/image/ai-image-generator"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-azw3",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/from-azw3"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-epub",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/from-epub"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-mobi",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/from-mobi"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-ppt",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/from-ppt"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-word",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/from-word"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-azw3",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/to-azw3"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-epub",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/to-epub"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-mobi",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/to-mobi"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-ppt",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/to-ppt"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-word",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/to-word"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-xlsx",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "-",
+      "url": "https://tinywow.com/pdf/to-xlsx"
+    },
+    {
+      "category": "video",
+      "slug": "from-fb",
+      "bucket": "DROPPED",
+      "engine": "-",
+      "url": "https://tinywow.com/video/from-fb"
+    },
+    {
+      "category": "video",
+      "slug": "from-gif",
+      "bucket": "DROPPED",
+      "engine": "-",
+      "url": "https://tinywow.com/video/from-gif"
+    },
+    {
+      "category": "video",
+      "slug": "from-inst",
+      "bucket": "DROPPED",
+      "engine": "-",
+      "url": "https://tinywow.com/video/from-inst"
+    },
+    {
+      "category": "video",
+      "slug": "from-tiktok",
+      "bucket": "DROPPED",
+      "engine": "-",
+      "url": "https://tinywow.com/video/from-tiktok"
+    },
+    {
+      "category": "video",
+      "slug": "from-twitter",
+      "bucket": "DROPPED",
+      "engine": "-",
+      "url": "https://tinywow.com/video/from-twitter"
+    },
+    {
+      "category": "video",
+      "slug": "youtube-to-text",
+      "bucket": "DROPPED",
+      "engine": "-",
+      "url": "https://tinywow.com/video/youtube-to-text"
+    },
+    {
+      "category": "video",
+      "slug": "youtube-transcript",
+      "bucket": "DROPPED",
+      "engine": "-",
+      "url": "https://tinywow.com/video/youtube-transcript"
+    },
+    {
+      "category": "converter",
+      "slug": "csv-to-excel",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/csv-to-excel"
+    },
+    {
+      "category": "converter",
+      "slug": "csv-to-json",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/csv-to-json"
+    },
+    {
+      "category": "converter",
+      "slug": "csv-to-xml",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/csv-to-xml"
+    },
+    {
+      "category": "converter",
+      "slug": "excel-to-csv",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/excel-to-csv"
+    },
+    {
+      "category": "converter",
+      "slug": "excel-to-xml",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/excel-to-xml"
+    },
+    {
+      "category": "converter",
+      "slug": "json-to-xml",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/json-to-xml"
+    },
+    {
+      "category": "converter",
+      "slug": "split-csv",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/split-csv"
+    },
+    {
+      "category": "converter",
+      "slug": "split-excel",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/split-excel"
+    },
+    {
+      "category": "converter",
+      "slug": "xml-to-csv",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/xml-to-csv"
+    },
+    {
+      "category": "converter",
+      "slug": "xml-to-excel",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/xml-to-excel"
+    },
+    {
+      "category": "converter",
+      "slug": "xml-to-json",
+      "bucket": "ONDEVICE-DET",
+      "engine": "dart-libs",
+      "url": "https://tinywow.com/converter/xml-to-json"
+    },
+    {
+      "category": "image",
+      "slug": "add-images",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/add-images"
+    },
+    {
+      "category": "image",
+      "slug": "border",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/border"
+    },
+    {
+      "category": "image",
+      "slug": "chart-maker",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/chart-maker"
+    },
+    {
+      "category": "image",
+      "slug": "collage-maker",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/collage-maker"
+    },
+    {
+      "category": "image",
+      "slug": "combine-maker",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/combine-maker"
+    },
+    {
+      "category": "image",
+      "slug": "compress",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/compress"
+    },
+    {
+      "category": "image",
+      "slug": "crop",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/crop"
+    },
+    {
+      "category": "image",
+      "slug": "crop-circle",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/crop-circle"
+    },
+    {
+      "category": "image",
+      "slug": "eps-to-jpg",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/eps-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "eps-to-png",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/eps-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "eps-to-svg",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/eps-to-svg"
+    },
+    {
+      "category": "image",
+      "slug": "flip",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/flip"
+    },
+    {
+      "category": "image",
+      "slug": "font-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/font-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "gif-to-apng",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/gif-to-apng"
+    },
+    {
+      "category": "image",
+      "slug": "gif-to-avif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/gif-to-avif"
+    },
+    {
+      "category": "image",
+      "slug": "gif-to-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/gif-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "gif-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/gif-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "grayscale",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/grayscale"
+    },
+    {
+      "category": "image",
+      "slug": "heic-to-avif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/heic-to-avif"
+    },
+    {
+      "category": "image",
+      "slug": "heic-to-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/heic-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "heic-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/heic-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "jpg-to-avif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/jpg-to-avif"
+    },
+    {
+      "category": "image",
+      "slug": "jpg-to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/jpg-to-gif"
+    },
+    {
+      "category": "image",
+      "slug": "jpg-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/jpg-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "jpg-to-svg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/jpg-to-svg"
+    },
+    {
+      "category": "image",
+      "slug": "jpg-to-tiff",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/jpg-to-tiff"
+    },
+    {
+      "category": "image",
+      "slug": "jpg-to-webp",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/jpg-to-webp"
+    },
+    {
+      "category": "image",
+      "slug": "metadata",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/metadata"
+    },
+    {
+      "category": "image",
+      "slug": "pixelate",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/pixelate"
+    },
+    {
+      "category": "image",
+      "slug": "png-to-avif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/png-to-avif"
+    },
+    {
+      "category": "image",
+      "slug": "png-to-eps",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/png-to-eps"
+    },
+    {
+      "category": "image",
+      "slug": "png-to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/png-to-gif"
+    },
+    {
+      "category": "image",
+      "slug": "png-to-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/png-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "png-to-svg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/png-to-svg"
+    },
+    {
+      "category": "image",
+      "slug": "png-to-tiff",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/png-to-tiff"
+    },
+    {
+      "category": "image",
+      "slug": "png-to-webp",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/png-to-webp"
+    },
+    {
+      "category": "image",
+      "slug": "psd-to-ai",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/psd-to-ai"
+    },
+    {
+      "category": "image",
+      "slug": "psd-to-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/psd-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "psd-to-pdf",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/psd-to-pdf"
+    },
+    {
+      "category": "image",
+      "slug": "psd-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/psd-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "psd-to-svg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/psd-to-svg"
+    },
+    {
+      "category": "image",
+      "slug": "resize",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/resize"
+    },
+    {
+      "category": "image",
+      "slug": "split",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/split"
+    },
+    {
+      "category": "image",
+      "slug": "svg-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/svg-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "text-image-generator",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/text-image-generator"
+    },
+    {
+      "category": "image",
+      "slug": "text-to-image",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/text-to-image"
+    },
+    {
+      "category": "image",
+      "slug": "tiff-to-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/tiff-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "tiff-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/tiff-to-png"
+    },
+    {
+      "category": "image",
+      "slug": "tiff-to-svg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/tiff-to-svg"
+    },
+    {
+      "category": "image",
+      "slug": "tiff-to-text",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit",
+      "url": "https://tinywow.com/image/tiff-to-text"
+    },
+    {
+      "category": "image",
+      "slug": "translate",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit+onnx",
+      "url": "https://tinywow.com/image/translate"
+    },
+    {
+      "category": "image",
+      "slug": "vsd-to-docx",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsd-to-docx"
+    },
+    {
+      "category": "image",
+      "slug": "vsd-to-jpg",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsd-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "vsd-to-pdf",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsd-to-pdf"
+    },
+    {
+      "category": "image",
+      "slug": "vsd-to-pptx",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsd-to-pptx"
+    },
+    {
+      "category": "image",
+      "slug": "vsdx-to-docx",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsdx-to-docx"
+    },
+    {
+      "category": "image",
+      "slug": "vsdx-to-jpg",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsdx-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "vsdx-to-pdf",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsdx-to-pdf"
+    },
+    {
+      "category": "image",
+      "slug": "vsdx-to-pptx",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/image/vsdx-to-pptx"
+    },
+    {
+      "category": "image",
+      "slug": "webp-to-avif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/webp-to-avif"
+    },
+    {
+      "category": "image",
+      "slug": "webp-to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/webp-to-gif"
+    },
+    {
+      "category": "image",
+      "slug": "webp-to-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/webp-to-jpg"
+    },
+    {
+      "category": "image",
+      "slug": "webp-to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "native-image",
+      "url": "https://tinywow.com/image/webp-to-png"
+    },
+    {
+      "category": "pdf",
+      "slug": "add-images",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/add-images"
+    },
+    {
+      "category": "pdf",
+      "slug": "add-pages",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/add-pages"
+    },
+    {
+      "category": "pdf",
+      "slug": "add-text",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/add-text"
+    },
+    {
+      "category": "pdf",
+      "slug": "compress",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/compress"
+    },
+    {
+      "category": "pdf",
+      "slug": "create",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/create"
+    },
+    {
+      "category": "pdf",
+      "slug": "crop",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/crop"
+    },
+    {
+      "category": "pdf",
+      "slug": "delete",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/delete"
+    },
+    {
+      "category": "pdf",
+      "slug": "edit",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/edit"
+    },
+    {
+      "category": "pdf",
+      "slug": "extract-img",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/extract-img"
+    },
+    {
+      "category": "pdf",
+      "slug": "extract-text",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/extract-text"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-eps",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/pdf/from-eps"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/from-gif"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-heic",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/from-heic"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/from-jpg"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-msg",
+      "bucket": "DEFERRED-CLOUD",
+      "engine": "cloud-required",
+      "url": "https://tinywow.com/pdf/from-msg"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/from-png"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-tiff",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/from-tiff"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-url",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/from-url"
+    },
+    {
+      "category": "pdf",
+      "slug": "from-webp",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/from-webp"
+    },
+    {
+      "category": "pdf",
+      "slug": "merge",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/merge"
+    },
+    {
+      "category": "pdf",
+      "slug": "protect",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/protect"
+    },
+    {
+      "category": "pdf",
+      "slug": "rearrange",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/rearrange"
+    },
+    {
+      "category": "pdf",
+      "slug": "remove-watermark",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/remove-watermark"
+    },
+    {
+      "category": "pdf",
+      "slug": "rotate",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/rotate"
+    },
+    {
+      "category": "pdf",
+      "slug": "sign",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/sign"
+    },
+    {
+      "category": "pdf",
+      "slug": "split",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/split"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-csv",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/to-csv"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-jpg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/to-jpg"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-png",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/to-png"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-text",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/to-text"
+    },
+    {
+      "category": "pdf",
+      "slug": "to-tiff",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/to-tiff"
+    },
+    {
+      "category": "pdf",
+      "slug": "unlock",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/unlock"
+    },
+    {
+      "category": "pdf",
+      "slug": "watermark",
+      "bucket": "ONDEVICE-DET",
+      "engine": "pdfrx+pdf+native",
+      "url": "https://tinywow.com/pdf/watermark"
+    },
+    {
+      "category": "video",
+      "slug": "aac-to-flac",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/aac-to-flac"
+    },
+    {
+      "category": "video",
+      "slug": "aac-to-m4r",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/aac-to-m4r"
+    },
+    {
+      "category": "video",
+      "slug": "aac-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/aac-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "aac-to-mp4",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/aac-to-mp4"
+    },
+    {
+      "category": "video",
+      "slug": "aac-to-wav",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/aac-to-wav"
+    },
+    {
+      "category": "video",
+      "slug": "avi-to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/avi-to-gif"
+    },
+    {
+      "category": "video",
+      "slug": "avi-to-mkv",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/avi-to-mkv"
+    },
+    {
+      "category": "video",
+      "slug": "avi-to-mov",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/avi-to-mov"
+    },
+    {
+      "category": "video",
+      "slug": "avi-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/avi-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "avi-to-mp4",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/avi-to-mp4"
+    },
+    {
+      "category": "video",
+      "slug": "compress",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/compress"
+    },
+    {
+      "category": "video",
+      "slug": "compress-avi",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/compress-avi"
+    },
+    {
+      "category": "video",
+      "slug": "compress-mkv",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/compress-mkv"
+    },
+    {
+      "category": "video",
+      "slug": "compress-mov",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/compress-mov"
+    },
+    {
+      "category": "video",
+      "slug": "cutter",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/cutter"
+    },
+    {
+      "category": "video",
+      "slug": "extract-audio",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/extract-audio"
+    },
+    {
+      "category": "video",
+      "slug": "gif-to-mov",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/gif-to-mov"
+    },
+    {
+      "category": "video",
+      "slug": "gif-to-webm",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/gif-to-webm"
+    },
+    {
+      "category": "video",
+      "slug": "m4a-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/m4a-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "m4a-to-mp4",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/m4a-to-mp4"
+    },
+    {
+      "category": "video",
+      "slug": "m4a-to-wav",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/m4a-to-wav"
+    },
+    {
+      "category": "video",
+      "slug": "mkv-to-avi",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mkv-to-avi"
+    },
+    {
+      "category": "video",
+      "slug": "mkv-to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mkv-to-gif"
+    },
+    {
+      "category": "video",
+      "slug": "mkv-to-mov",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mkv-to-mov"
+    },
+    {
+      "category": "video",
+      "slug": "mkv-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mkv-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "mkv-to-mp4",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mkv-to-mp4"
+    },
+    {
+      "category": "video",
+      "slug": "mov-to-avi",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mov-to-avi"
+    },
+    {
+      "category": "video",
+      "slug": "mov-to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mov-to-gif"
+    },
+    {
+      "category": "video",
+      "slug": "mov-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mov-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "mov-to-mp4",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mov-to-mp4"
+    },
+    {
+      "category": "video",
+      "slug": "mov-to-wav",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mov-to-wav"
+    },
+    {
+      "category": "video",
+      "slug": "mp4-to-avi",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mp4-to-avi"
+    },
+    {
+      "category": "video",
+      "slug": "mp4-to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mp4-to-gif"
+    },
+    {
+      "category": "video",
+      "slug": "mp4-to-mov",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mp4-to-mov"
+    },
+    {
+      "category": "video",
+      "slug": "mp4-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mp4-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "mp4-to-ogg",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mp4-to-ogg"
+    },
+    {
+      "category": "video",
+      "slug": "mp4-to-wav",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mp4-to-wav"
+    },
+    {
+      "category": "video",
+      "slug": "mp4-to-webm",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mp4-to-webm"
+    },
+    {
+      "category": "video",
+      "slug": "mute",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/mute"
+    },
+    {
+      "category": "video",
+      "slug": "ogg-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/ogg-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "ogg-to-wav",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/ogg-to-wav"
+    },
+    {
+      "category": "video",
+      "slug": "resize",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/resize"
+    },
+    {
+      "category": "video",
+      "slug": "to-gif",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/to-gif"
+    },
+    {
+      "category": "video",
+      "slug": "to-webp",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/to-webp"
+    },
+    {
+      "category": "video",
+      "slug": "webm-to-mov",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/webm-to-mov"
+    },
+    {
+      "category": "video",
+      "slug": "webm-to-mp3",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/webm-to-mp3"
+    },
+    {
+      "category": "video",
+      "slug": "webm-to-mp4",
+      "bucket": "ONDEVICE-DET",
+      "engine": "ffmpeg-kit-fork(LGPL)",
+      "url": "https://tinywow.com/video/webm-to-mp4"
+    },
+    {
+      "category": "pdf",
+      "slug": "summarizer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/pdf/summarizer"
+    },
+    {
+      "category": "pdf",
+      "slug": "translate",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/pdf/translate"
+    },
+    {
+      "category": "write",
+      "slug": "ai-detector",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/ai-detector"
+    },
+    {
+      "category": "write",
+      "slug": "ai-rephraser",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/ai-rephraser"
+    },
+    {
+      "category": "write",
+      "slug": "ai-twitter-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/ai-twitter-generator"
+    },
+    {
+      "category": "write",
+      "slug": "article-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/article-generator"
+    },
+    {
+      "category": "write",
+      "slug": "article-rewriter",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/article-rewriter"
+    },
+    {
+      "category": "write",
+      "slug": "article-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/article-writer"
+    },
+    {
+      "category": "write",
+      "slug": "bill-sale-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/bill-sale-generator"
+    },
+    {
+      "category": "write",
+      "slug": "blog-outline",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/blog-outline"
+    },
+    {
+      "category": "write",
+      "slug": "business-name-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/business-name-generator"
+    },
+    {
+      "category": "write",
+      "slug": "business-plan-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/business-plan-generator"
+    },
+    {
+      "category": "write",
+      "slug": "business-slogan-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/business-slogan-generator"
+    },
+    {
+      "category": "write",
+      "slug": "cold-email-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/cold-email-writer"
+    },
+    {
+      "category": "write",
+      "slug": "content-brief-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/content-brief-generator"
+    },
+    {
+      "category": "write",
+      "slug": "content-improver",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/content-improver"
+    },
+    {
+      "category": "write",
+      "slug": "content-planner",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/content-planner"
+    },
+    {
+      "category": "write",
+      "slug": "content-summarizer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/content-summarizer"
+    },
+    {
+      "category": "write",
+      "slug": "essay-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/essay-writer"
+    },
+    {
+      "category": "write",
+      "slug": "explain-like-five",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/explain-like-five"
+    },
+    {
+      "category": "write",
+      "slug": "facebook-ad-headlines",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/facebook-ad-headlines"
+    },
+    {
+      "category": "write",
+      "slug": "faq-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/faq-generator"
+    },
+    {
+      "category": "write",
+      "slug": "grammar-fixer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/grammar-fixer"
+    },
+    {
+      "category": "write",
+      "slug": "humanizer-ai",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/humanizer-ai"
+    },
+    {
+      "category": "write",
+      "slug": "instagram-caption-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/instagram-caption-generator"
+    },
+    {
+      "category": "write",
+      "slug": "instagram-story-ideas",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/instagram-story-ideas"
+    },
+    {
+      "category": "write",
+      "slug": "landing-page-copy",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/landing-page-copy"
+    },
+    {
+      "category": "write",
+      "slug": "linkedin-post-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/linkedin-post-generator"
+    },
+    {
+      "category": "write",
+      "slug": "listicle-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/listicle-writer"
+    },
+    {
+      "category": "write",
+      "slug": "meta-description-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/meta-description-generator"
+    },
+    {
+      "category": "write",
+      "slug": "nda-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/nda-generator"
+    },
+    {
+      "category": "write",
+      "slug": "paragraph-completer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/paragraph-completer"
+    },
+    {
+      "category": "write",
+      "slug": "paragraph-rewriter",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/paragraph-rewriter"
+    },
+    {
+      "category": "write",
+      "slug": "paragraph-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/paragraph-writer"
+    },
+    {
+      "category": "write",
+      "slug": "paraphrasing",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/paraphrasing"
+    },
+    {
+      "category": "write",
+      "slug": "podcast-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/podcast-writer"
+    },
+    {
+      "category": "write",
+      "slug": "poll-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/poll-generator"
+    },
+    {
+      "category": "write",
+      "slug": "post-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/post-generator"
+    },
+    {
+      "category": "write",
+      "slug": "post-ideas",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/post-ideas"
+    },
+    {
+      "category": "write",
+      "slug": "post-rewriter",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/post-rewriter"
+    },
+    {
+      "category": "write",
+      "slug": "post-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/post-writer"
+    },
+    {
+      "category": "write",
+      "slug": "press-release-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/press-release-generator"
+    },
+    {
+      "category": "write",
+      "slug": "privacy-policy-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/privacy-policy-generator"
+    },
+    {
+      "category": "write",
+      "slug": "purchase-agreement-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/purchase-agreement-generator"
+    },
+    {
+      "category": "write",
+      "slug": "real-estate-description",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/real-estate-description"
+    },
+    {
+      "category": "write",
+      "slug": "sentence-rewriter",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/sentence-rewriter"
+    },
+    {
+      "category": "write",
+      "slug": "shorten-content",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/shorten-content"
+    },
+    {
+      "category": "write",
+      "slug": "story-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/story-generator"
+    },
+    {
+      "category": "write",
+      "slug": "summarize-youtube",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/summarize-youtube"
+    },
+    {
+      "category": "write",
+      "slug": "tiktok-script-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/tiktok-script-writer"
+    },
+    {
+      "category": "write",
+      "slug": "title-rewriter",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/title-rewriter"
+    },
+    {
+      "category": "write",
+      "slug": "tone-of-voice",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/tone-of-voice"
+    },
+    {
+      "category": "write",
+      "slug": "translate",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/translate"
+    },
+    {
+      "category": "write",
+      "slug": "trivia-generator",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/trivia-generator"
+    },
+    {
+      "category": "write",
+      "slug": "word-counter",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/word-counter"
+    },
+    {
+      "category": "write",
+      "slug": "youtube-script-writer",
+      "bucket": "ONDEVICE-LLM",
+      "engine": "flutter_gemma",
+      "url": "https://tinywow.com/write/youtube-script-writer"
+    },
+    {
+      "category": "image",
+      "slug": "blur-background",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-segmentation",
+      "url": "https://tinywow.com/image/blur-background"
+    },
+    {
+      "category": "image",
+      "slug": "change-bg-photo",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-segmentation",
+      "url": "https://tinywow.com/image/change-bg-photo"
+    },
+    {
+      "category": "image",
+      "slug": "cleanup-picture",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/cleanup-picture"
+    },
+    {
+      "category": "image",
+      "slug": "colorize-photo",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/colorize-photo"
+    },
+    {
+      "category": "image",
+      "slug": "make-background-transparent",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-segmentation",
+      "url": "https://tinywow.com/image/make-background-transparent"
+    },
+    {
+      "category": "image",
+      "slug": "profile-photo",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-segmentation",
+      "url": "https://tinywow.com/image/profile-photo"
+    },
+    {
+      "category": "image",
+      "slug": "remove-bg",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-segmentation",
+      "url": "https://tinywow.com/image/remove-bg"
+    },
+    {
+      "category": "image",
+      "slug": "remove-objects",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/remove-objects"
+    },
+    {
+      "category": "image",
+      "slug": "remove-person",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/remove-person"
+    },
+    {
+      "category": "image",
+      "slug": "remove-text-photo",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-ocr",
+      "url": "https://tinywow.com/image/remove-text-photo"
+    },
+    {
+      "category": "image",
+      "slug": "remove-watermark-photo",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/remove-watermark-photo"
+    },
+    {
+      "category": "image",
+      "slug": "repair-defects",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/repair-defects"
+    },
+    {
+      "category": "image",
+      "slug": "sharpen",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/sharpen"
+    },
+    {
+      "category": "image",
+      "slug": "to-text",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-ocr",
+      "url": "https://tinywow.com/image/to-text"
+    },
+    {
+      "category": "image",
+      "slug": "unblur",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/unblur"
+    },
+    {
+      "category": "image",
+      "slug": "upscale",
+      "bucket": "ONDEVICE-ML",
+      "engine": "onnxruntime",
+      "url": "https://tinywow.com/image/upscale"
+    },
+    {
+      "category": "video",
+      "slug": "add-subtitles",
+      "bucket": "ONDEVICE-ML",
+      "engine": "sherpa-onnx-asr",
+      "url": "https://tinywow.com/video/add-subtitles"
+    },
+    {
+      "category": "video",
+      "slug": "audio-to-text",
+      "bucket": "ONDEVICE-ML",
+      "engine": "sherpa-onnx-asr",
+      "url": "https://tinywow.com/video/audio-to-text"
+    },
+    {
+      "category": "video",
+      "slug": "summarize-podcast",
+      "bucket": "ONDEVICE-ML",
+      "engine": "sherpa-onnx-asr",
+      "url": "https://tinywow.com/video/summarize-podcast"
+    },
+    {
+      "category": "video",
+      "slug": "to-text",
+      "bucket": "ONDEVICE-ML",
+      "engine": "mlkit-ocr",
+      "url": "https://tinywow.com/video/to-text"
+    },
+    {
+      "category": "video",
+      "slug": "transcribe-podcast",
+      "bucket": "ONDEVICE-ML",
+      "engine": "sherpa-onnx-asr",
+      "url": "https://tinywow.com/video/transcribe-podcast"
+    }
+  ]
+}

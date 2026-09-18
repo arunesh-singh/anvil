@@ -1,0 +1,19 @@
+/* M3 easing + duration tokens. Anvil's motion is Material-default: no bespoke
+   springs or bounces; ripples on every tap target; page pushes use the
+   platform MaterialPageRoute transition. */
+:root{
+  --easing-standard:cubic-bezier(0.2,0,0,1); /* @kind other */
+  --easing-standard-accelerate:cubic-bezier(0.3,0,1,1); /* @kind other */
+  --easing-standard-decelerate:cubic-bezier(0,0,0,1); /* @kind other */
+  --easing-emphasized:cubic-bezier(0.2,0,0,1); /* @kind other */
+  --easing-legacy:cubic-bezier(0.4,0,0.2,1); /* @kind other */
+
+  --duration-short-1:50ms; /* @kind other */
+  --duration-short-2:100ms; /* @kind other */
+  --duration-short-4:200ms; /* @kind other */
+  --duration-medium-2:300ms; /* @kind other */
+  --duration-medium-4:400ms; /* @kind other */
+  --duration-long-2:500ms; /* @kind other */
+
+  --transition-state:background-color var(--duration-short-4) var(--easing-standard),color var(--duration-short-4) var(--easing-standard),box-shadow var(--duration-short-4) var(--easing-standard); /* @kind other */
+}

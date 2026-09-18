@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<script src="./ds-base.js"></script>
+<style>html,body{margin:0}body{background:#2a2a2d;font-family:'Roboto',system-ui,sans-serif}a{color:#2848ee}a:hover{color:#002ccd}</style>
+</helmet>
+
+<div style="padding:48px;display:flex;flex-direction:column;gap:24px">
+<div style="color:#f3f0f4;font:500 14px/20px 'Roboto',sans-serif;letter-spacing:1.5px;text-transform:uppercase">Anvil today — recreated from lib/ui/**</div>
+<div style="display:flex;gap:32px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="color:#acaaaf;font:400 13px/16px 'Roboto Mono',monospace">home_screen.dart</div>
+<div data-screen-label="Home" style="width:412px;height:860px;display:flex;flex-direction:column;background:#fffbff;color:#1b1b1f;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+  <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TopAppBar" title="Anvil" hint-size="100%,64px"></x-import>
+  <div style="padding:12px">
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TextField" hint="Search tools" prefix-icon="search" hint-size="100%,56px"></x-import>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:0 12px 16px">
+    <div style="padding:16px 4px 8px;font:500 14px/20px 'Roboto',sans-serif;letter-spacing:0.1px">Converters</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="data_object" label="CSV to JSON" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="table_chart" label="CSV to Excel" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="code" label="CSV to XML" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="grid_on" label="XML to CSV" hint-size="100%,80px"></x-import>
+    </div>
+    <div style="padding:16px 4px 8px;font:500 14px/20px 'Roboto',sans-serif;letter-spacing:0.1px">PDF</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="merge" label="Merge PDFs" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="call_split" label="Split PDF" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="compress" label="Compress PDF" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="lock" label="Protect PDF" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="branding_watermark" label="Watermark PDF" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="draw" label="Sign PDF" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="text_snippet" label="Extract Text" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="public" label="Website to PDF" hint-size="100%,80px"></x-import>
+    </div>
+    <div style="padding:16px 4px 8px;font:500 14px/20px 'Roboto',sans-serif;letter-spacing:0.1px">Image</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="compress" label="Compress Image" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="panorama_fish_eye" label="Circle Crop" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="dashboard" label="Collage Maker" hint-size="100%,80px"></x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ToolTile" icon="border_outer" label="Add Border" hint-size="100%,80px"></x-import>
+    </div>
+  </div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="color:#acaaaf;font:400 13px/16px 'Roboto Mono',monospace">generic_tool_screen.dart</div>
+<div data-screen-label="Tool" style="width:412px;height:860px;display:flex;flex-direction:column;background:#fffbff;color:#1b1b1f;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+  <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TopAppBar" title="Split PDF" on-back="{{ noop }}" hint-size="100%,64px"></x-import>
+  <div style="flex:1;display:flex;flex-direction:column;padding:16px">
+    <div style="font:400 16px/24px 'Roboto',sans-serif;letter-spacing:0.5px">Split a PDF into smaller files by page count.</div>
+    <div style="height:24px"></div>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.Button" variant="outlined" icon="attach_file" hint-size="140px,40px">Pick file</x-import>
+    <div style="margin-top:12px;font:400 14px/20px 'Roboto',sans-serif;letter-spacing:0.25px">Selected: quarterly_report.pdf</div>
+    <div style="margin-top:16px">
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TextField" label="Pages per file" default-value="5" hint-size="100%,56px"></x-import>
+    </div>
+    <div style="flex:1;min-height:24px"></div>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.Button" variant="filled" full-width="{{ true }}" hint-size="100%,40px">Run</x-import>
+  </div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="color:#acaaaf;font:400 13px/16px 'Roboto Mono',monospace">progress_view.dart</div>
+<div data-screen-label="Running" style="width:412px;height:860px;display:flex;flex-direction:column;background:#fffbff;color:#1b1b1f;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+  <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TopAppBar" title="Split PDF" on-back="{{ noop }}" hint-size="100%,64px"></x-import>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px">
+    <div style="width:100%">
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.LinearProgress" value="{{ frac }}" hint-size="100%,4px"></x-import>
+    </div>
+    <div style="margin-top:16px;font:400 16px/24px 'Roboto',sans-serif;letter-spacing:0.5px;text-align:center">Splitting…</div>
+    <div style="margin-top:24px">
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.Button" variant="outlined" hint-size="100px,40px">Cancel</x-import>
+    </div>
+  </div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="color:#acaaaf;font:400 13px/16px 'Roboto Mono',monospace">result_screen.dart</div>
+<div data-screen-label="Result" style="width:412px;height:860px;display:flex;flex-direction:column;background:#fffbff;color:#1b1b1f;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+  <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TopAppBar" title="Result" on-back="{{ noop }}" hint-size="100%,64px"></x-import>
+  <div style="flex:1;display:flex;flex-direction:column;padding:16px">
+    <div style="font:500 16px/24px 'Roboto',sans-serif;letter-spacing:0.15px">Output files</div>
+    <div style="height:8px"></div>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ListTile" leading-icon="insert_drive_file" title="quarterly_report_1.pdf" dc-props="{{ zeroPad }}" hint-size="100%,56px"></x-import>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ListTile" leading-icon="insert_drive_file" title="quarterly_report_2.pdf" dc-props="{{ zeroPad }}" hint-size="100%,56px"></x-import>
+    <div style="flex:1"></div>
+    <div style="display:flex;gap:12px;margin-top:16px">
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.Button" variant="filled" icon="share" full-width="{{ true }}" hint-size="100%,40px">Share</x-import>
+      <x-import component-from-global-scope="AnvilDesignSystem_296c7d.Button" variant="outlined" full-width="{{ true }}" hint-size="100%,40px">Done</x-import>
+    </div>
+  </div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="color:#acaaaf;font:400 13px/16px 'Roboto Mono',monospace">history_screen.dart</div>
+<div data-screen-label="My Files" style="width:412px;height:860px;display:flex;flex-direction:column;background:#fffbff;color:#1b1b1f;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+  <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TopAppBar" title="My Files" on-back="{{ noop }}" hint-size="100%,64px"></x-import>
+  <div style="flex:1;overflow-y:auto">
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ListTile" leading-icon="call_split" title="Split PDF" subtitle="quarterly_report.pdf&#10;2026-08-04 14:02" lines="{{ three }}" on-click="{{ noop }}" hint-size="100%,88px"></x-import>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ListTile" leading-icon="compress" title="Compress Image" subtitle="IMG_4471.jpg&#10;2026-08-03 09:18" lines="{{ three }}" on-click="{{ noop }}" hint-size="100%,88px"></x-import>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ListTile" leading-icon="data_object" title="CSV to JSON" subtitle="orders_july.csv&#10;2026-08-01 21:44" lines="{{ three }}" on-click="{{ noop }}" hint-size="100%,88px"></x-import>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.ListTile" leading-icon="music_note" title="Extract Audio" subtitle="lecture_03.mp4&#10;2026-07-29 11:05" lines="{{ three }}" on-click="{{ noop }}" hint-size="100%,88px"></x-import>
+  </div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="color:#acaaaf;font:400 13px/16px 'Roboto Mono',monospace">settings_screen.dart</div>
+<div data-screen-label="Settings" style="width:412px;height:860px;display:flex;flex-direction:column;background:#fffbff;color:#1b1b1f;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+  <x-import component-from-global-scope="AnvilDesignSystem_296c7d.TopAppBar" title="Settings" on-back="{{ noop }}" hint-size="100%,64px"></x-import>
+  <div style="flex:1;overflow-y:auto">
+    <div style="padding:16px 16px 8px;font:400 16px/24px 'Roboto',sans-serif;letter-spacing:0.5px">Theme</div>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.RadioTile" label="System" selected="{{ true }}" hint-size="100%,56px"></x-import>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.RadioTile" label="Light" hint-size="100%,56px"></x-import>
+    <x-import component-from-global-scope="AnvilDesignSystem_296c7d.RadioTile" label="Dark" hint-size="100%,56px"></x-import>
+  </div>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:2800,&quot;height&quot;:1050}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { noop: () => {}, frac: 0.55, three: 3, zeroPad: { style: { padding: 0 } } };
+  }
+}
+</script>
+</body>
+</html>

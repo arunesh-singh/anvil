@@ -1,0 +1,143 @@
+{
+  "manifestVersion": 4,
+  "models": {
+    "image.upscale": {
+      "variants": [
+        {
+          "id": "swin2sr-x4-fp16",
+          "tier": "fast",
+          "url": "https://huggingface.co/Xenova/swin2SR-classical-sr-x4-64/resolve/main/onnx/model_fp16.onnx",
+          "sha256": "53757d8205096e5338e5996383702953b77a4e8278dcfcfee561e208a9f71694",
+          "sizeBytes": 32724291,
+          "runtime": "onnx",
+          "minRamGb": 3,
+          "accelerator": "nnapi",
+          "version": "1.0.0"
+        },
+        {
+          "id": "swin2sr-x4-fp32",
+          "tier": "quality",
+          "url": "https://huggingface.co/Xenova/swin2SR-classical-sr-x4-64/resolve/main/onnx/model.onnx",
+          "sha256": "95c8b7c898a6d08c788e5d9e7c7e78cfb2956f2cbbabe78264002f9704554992",
+          "sizeBytes": 55020184,
+          "runtime": "onnx",
+          "minRamGb": 4,
+          "accelerator": "gpu",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "image.colorize": {
+      "variants": [
+        {
+          "id": "manga-colorization-v2-fp16",
+          "tier": "fast",
+          "url": "https://huggingface.co/Faridzar/manga-colorization-v2-onnx/resolve/main/manga-colorize-fp16.onnx",
+          "sha256": "39660d0047ea6f1a0ddee6aa89054997f95ea566f4d56ff762f66dbcf1a1a7ef",
+          "sizeBytes": 61650260,
+          "runtime": "onnx",
+          "minRamGb": 3,
+          "accelerator": "nnapi",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "image.deblur": {
+      "variants": [
+        {
+          "id": "nafnet-2025may",
+          "tier": "fast",
+          "url": "https://huggingface.co/opencv/deblurring_nafnet/resolve/main/deblurring_nafnet_2025may.onnx",
+          "sha256": "07263f416febecce10193dd648e950b22e397cf521eedab1a114ef77b2bc9587",
+          "sizeBytes": 91736251,
+          "runtime": "onnx",
+          "minRamGb": 4,
+          "accelerator": "nnapi",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "image.inpaint": {
+      "variants": [
+        {
+          "id": "lama-fp32",
+          "tier": "quality",
+          "url": "https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx",
+          "sha256": "1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6",
+          "sizeBytes": 208044816,
+          "runtime": "onnx",
+          "minRamGb": 4,
+          "accelerator": "gpu",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "asr.transcribe": {
+      "variants": [
+        {
+          "id": "sherpa-whisper-tiny-en",
+          "tier": "fast",
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-tiny.en.tar.bz2",
+          "sha256": "2bd6cf965c8bb3e068ef9fa2191387ee63a9dfa2a4e37582a8109641c20005dd",
+          "sizeBytes": 118071777,
+          "runtime": "sherpa",
+          "minRamGb": 3,
+          "accelerator": "cpu",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "agent.llm": {
+      "chat": true,
+      "variants": [
+        {
+          "id": "gemma-4-e2b-it-litertlm",
+          "tier": "quality",
+          "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
+          "sha256": "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c",
+          "sizeBytes": 2588147712,
+          "runtime": "task",
+          "minRamGb": 6,
+          "accelerator": "gpu",
+          "supportsImage": true,
+          "family": "gemma4",
+          "maxTokens": 4096,
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "agent.llm.qwen": {
+      "chat": true,
+      "variants": [
+        {
+          "id": "qwen3-1_7b-dynamic-int4",
+          "tier": "fast",
+          "url": "https://huggingface.co/litert-community/Qwen3-1.7B/resolve/main/Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm",
+          "sha256": "2eeffef7b51bc3e1225ea69fe7aa5f417397934b56a5b6c20cc068d6fd2c918b",
+          "sizeBytes": 977184032,
+          "runtime": "task",
+          "minRamGb": 6,
+          "accelerator": "gpu",
+          "supportsImage": false,
+          "family": "qwen3",
+          "maxTokens": 8192,
+          "version": "1.0.0"
+        },
+        {
+          "id": "qwen3-4b-instruct-2507-mixed-int4",
+          "tier": "quality",
+          "url": "https://huggingface.co/litert-community/Qwen3-4B-Instruct-2507/resolve/main/qwen3_4b_instruct_2507_mixed_int4.litertlm",
+          "sha256": "9e48b165836256f5344d9d044930607b9c47f6ef34e27f82e96881664f3ba2fd",
+          "sizeBytes": 2659057664,
+          "runtime": "task",
+          "minRamGb": 8,
+          "accelerator": "gpu",
+          "supportsImage": false,
+          "family": "qwen3",
+          "maxTokens": 8192,
+          "version": "1.0.0"
+        }
+      ]
+    }
+  }
+}

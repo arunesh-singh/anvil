@@ -1,0 +1,16 @@
+/* M3 shape scale. Anvil uses corner-medium for cards/tiles, corner-extra-small
+   for OutlineInputBorder fields, and corner-full for buttons and chips. */
+:root{
+  --corner-none:0px;
+  --corner-extra-small:4px;
+  --corner-small:8px;
+  --corner-medium:12px;
+  --corner-large:16px;
+  --corner-extra-large:28px;
+  --corner-full:9999px;
+
+  --radius-card:var(--corner-medium);
+  --radius-field:var(--corner-extra-small);
+  --radius-button:var(--corner-full);
+  --radius-sheet:var(--corner-extra-large);
+}

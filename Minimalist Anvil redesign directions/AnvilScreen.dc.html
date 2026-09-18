@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Anvil screen" description="A blank Anvil app screen: top app bar, scrolling content column, full-width primary action." -->
+<helmet><script src="./ds-base.js"></script><style>html,body{margin:0;height:100%}body{background:#fffbff;font-family:'Roboto',system-ui,sans-serif;color:#1b1b1f}</style></helmet>
+<div style="width:412px;height:860px;margin:0 auto;display:flex;flex-direction:column;background:#fffbff;overflow:hidden">
+<x-import component-from-global-scope="AnvilDesignSystem_296c7d.TopAppBar" title="{{ screenTitle }}" hint-size="100%,64px"></x-import>
+<div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:16px">
+<p style="margin:0;font:400 16px/24px 'Roboto',sans-serif;letter-spacing:0.5px">Convert a CSV file into a JSON array of objects.</p>
+<div style="height:24px"></div>
+<x-import component-from-global-scope="AnvilDesignSystem_296c7d.Button" variant="outlined" icon="attach_file" hint-size="140px,40px">Pick file</x-import>
+<div style="height:16px"></div>
+<x-import component-from-global-scope="AnvilDesignSystem_296c7d.TextField" label="Pages per file" hint-size="100%,56px"></x-import>
+<div style="flex:1;min-height:24px"></div>
+<x-import component-from-global-scope="AnvilDesignSystem_296c7d.Button" variant="filled" full-width="{{ true }}" hint-size="100%,40px">Run</x-import>
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:412,&quot;height&quot;:860},&quot;screenTitle&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;CSV to JSON&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { screenTitle: this.props.screenTitle ?? 'CSV to JSON' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+/* M3 elevation: a shadow pair plus a surface-container tint. Flutter's Material
+   3 Card sits at level 1 with a tinted surface, not a grey shadow-only card. */
+:root{
+  --elevation-0:none;
+  --elevation-1:0 1px 2px rgba(0,0,0,.30), 0 1px 3px 1px rgba(0,0,0,.15);
+  --elevation-2:0 1px 2px rgba(0,0,0,.30), 0 2px 6px 2px rgba(0,0,0,.15);
+  --elevation-3:0 1px 3px rgba(0,0,0,.30), 0 4px 8px 3px rgba(0,0,0,.15);
+  --elevation-4:0 2px 3px rgba(0,0,0,.30), 0 6px 10px 4px rgba(0,0,0,.15);
+  --elevation-5:0 4px 4px rgba(0,0,0,.30), 0 8px 12px 6px rgba(0,0,0,.15);
+
+  --surface-level-0:var(--md-surface); /* @kind color */
+  --surface-level-1:var(--md-surface-container-low); /* @kind color */
+  --surface-level-2:var(--md-surface-container); /* @kind color */
+  --surface-level-3:var(--md-surface-container-high); /* @kind color */
+  --surface-level-4:var(--md-surface-container-high); /* @kind color */
+  --surface-level-5:var(--md-surface-container-highest); /* @kind color */
+}

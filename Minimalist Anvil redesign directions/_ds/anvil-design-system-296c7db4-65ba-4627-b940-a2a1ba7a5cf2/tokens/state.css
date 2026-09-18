@@ -1,0 +1,12 @@
+/* M3 state layers: a translucent overlay of the content colour, never a
+   different hue. Opacities are the spec values Flutter's InkWell applies. */
+:root{
+  --state-hover-opacity:0.08; /* @kind other */
+  --state-focus-opacity:0.10; /* @kind other */
+  --state-pressed-opacity:0.10; /* @kind other */
+  --state-dragged-opacity:0.16; /* @kind other */
+  --state-disabled-content-opacity:0.38; /* @kind other */
+  --state-disabled-container-opacity:0.12; /* @kind other */
+
+  --ripple-color:currentColor; /* @kind color */
+}

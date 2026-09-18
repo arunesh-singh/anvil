@@ -1,0 +1,22 @@
+/* Anvil's layout rhythm, read off the Flutter widget tree: EdgeInsets.all(12)
+   on the home search + tool tiles, all(16) on tool/result screens, 8px grid
+   gutters, SizedBox(8/12/16/24) between stacked blocks. */
+:root{
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-6:24px;
+  --space-8:32px;
+  --space-12:48px;
+
+  --screen-padding:16px;
+  --list-padding:12px;
+  --grid-gutter:8px;
+  --tile-padding:12px;
+  --stack-gap:16px;
+
+  --touch-target:48px;
+  --appbar-height:64px;
+  --tool-tile-aspect:2.4; /* @kind other */
+}

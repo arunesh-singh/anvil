@@ -1,0 +1,64 @@
+/* Material 3 tonal palettes generated from Anvil's brand seed #3D5AFE
+   (lib/ui/theme.dart). Values produced by material-color-utilities
+   CorePalette.of(0xFF3D5AFE) — do not hand-edit. */
+:root{
+  --anvil-seed:#3d5afe;
+
+  /* Primary tonal palette */
+  --primary-0:#000000;--primary-10:#000f5d;--primary-20:#001d93;--primary-25:#0024b0;--primary-30:#002ccd;--primary-35:#1238e3;--primary-40:#2848ee;--primary-50:#4d67ff;--primary-60:#7387ff;--primary-70:#97a5ff;--primary-80:#bbc3ff;--primary-90:#dee0ff;--primary-95:#f0efff;--primary-98:#fbf8ff;--primary-99:#fffbff;--primary-100:#ffffff;
+
+  /* Secondary tonal palette */
+  --secondary-10:#181a2c;--secondary-20:#2d2f42;--secondary-30:#434559;--secondary-40:#5b5d72;--secondary-50:#74768b;--secondary-60:#8d8fa6;--secondary-70:#a8aac1;--secondary-80:#c4c5dd;--secondary-90:#e0e1f9;--secondary-95:#f0efff;--secondary-100:#ffffff;
+
+  /* Tertiary tonal palette */
+  --tertiary-10:#2d1227;--tertiary-20:#44263d;--tertiary-30:#5d3c54;--tertiary-40:#77536d;--tertiary-50:#916c86;--tertiary-60:#ad85a0;--tertiary-70:#c99fbb;--tertiary-80:#e6bad7;--tertiary-90:#ffd7f1;--tertiary-95:#ffecf6;--tertiary-100:#ffffff;
+
+  /* Neutral tonal palette */
+  --neutral-0:#000000;--neutral-4:#0e0e11;--neutral-6:#131316;--neutral-10:#1b1b1f;--neutral-12:#1f1f23;--neutral-17:#2a2a2d;--neutral-20:#303034;--neutral-22:#353438;--neutral-24:#39393c;--neutral-30:#47464a;--neutral-40:#5f5e62;--neutral-50:#78767a;--neutral-60:#929094;--neutral-70:#acaaaf;--neutral-80:#c8c5ca;--neutral-87:#dcd9de;--neutral-90:#e4e1e6;--neutral-92:#eae7ec;--neutral-94:#f0edf1;--neutral-95:#f3f0f4;--neutral-96:#f6f2f7;--neutral-98:#fbf8fd;--neutral-99:#fffbff;--neutral-100:#ffffff;
+
+  /* Neutral-variant tonal palette */
+  --neutral-variant-10:#1a1b23;--neutral-variant-20:#2f3038;--neutral-variant-30:#46464f;--neutral-variant-40:#5e5e67;--neutral-variant-50:#767680;--neutral-variant-60:#90909a;--neutral-variant-70:#abaab4;--neutral-variant-80:#c7c5d0;--neutral-variant-90:#e3e1ec;--neutral-variant-95:#f1effa;--neutral-variant-100:#ffffff;
+
+  /* Error tonal palette */
+  --error-10:#410002;--error-20:#690005;--error-30:#93000a;--error-40:#ba1a1a;--error-50:#de3730;--error-60:#ff5449;--error-70:#ff897d;--error-80:#ffb4ab;--error-90:#ffdad6;--error-95:#ffedea;--error-100:#ffffff;
+
+  /* ── Semantic roles: light scheme (default) ───────────────────────── */
+  --md-primary:#2848ee;--md-on-primary:#ffffff;--md-primary-container:#dee0ff;--md-on-primary-container:#000f5d;
+  --md-secondary:#5b5d72;--md-on-secondary:#ffffff;--md-secondary-container:#e0e1f9;--md-on-secondary-container:#181a2c;
+  --md-tertiary:#77536d;--md-on-tertiary:#ffffff;--md-tertiary-container:#ffd7f1;--md-on-tertiary-container:#2d1227;
+  --md-error:#ba1a1a;--md-on-error:#ffffff;--md-error-container:#ffdad6;--md-on-error-container:#410002;
+  --md-background:#fffbff;--md-on-background:#1b1b1f;
+  --md-surface:#fffbff;--md-on-surface:#1b1b1f;
+  --md-surface-variant:#e3e1ec;--md-on-surface-variant:#46464f;
+  --md-surface-dim:#dcd9de;--md-surface-bright:#fbf8fd;
+  --md-surface-container-lowest:#ffffff;--md-surface-container-low:#f6f2f7;--md-surface-container:#f0edf1;--md-surface-container-high:#eae7ec;--md-surface-container-highest:#e4e1e6;
+  --md-outline:#767680;--md-outline-variant:#c7c5d0;
+  --md-shadow:#000000;--md-scrim:#000000;
+  --md-inverse-surface:#303034;--md-inverse-on-surface:#f3f0f4;--md-inverse-primary:#bbc3ff;
+
+  /* ── Aliases used across Anvil surfaces ───────────────────────────── */
+  --text-body:var(--md-on-surface);
+  --text-muted:var(--md-on-surface-variant);
+  --text-accent:var(--md-primary);
+  --text-danger:var(--md-error);
+  --surface-page:var(--md-surface);
+  --surface-card:var(--md-surface-container-low);
+  --surface-raised:var(--md-surface-container);
+  --border-hairline:var(--md-outline-variant);
+  --border-strong:var(--md-outline);
+}
+
+/* Dark scheme — ThemeData.dark from the same seed. Apply on any ancestor. */
+[data-theme="dark"]{
+  --md-primary:#bbc3ff;--md-on-primary:#001d93;--md-primary-container:#002ccd;--md-on-primary-container:#dee0ff;
+  --md-secondary:#c4c5dd;--md-on-secondary:#2d2f42;--md-secondary-container:#434559;--md-on-secondary-container:#e0e1f9;
+  --md-tertiary:#e6bad7;--md-on-tertiary:#44263d;--md-tertiary-container:#5d3c54;--md-on-tertiary-container:#ffd7f1;
+  --md-error:#ffb4ab;--md-on-error:#690005;--md-error-container:#93000a;--md-on-error-container:#ffb4ab;
+  --md-background:#1b1b1f;--md-on-background:#e4e1e6;
+  --md-surface:#1b1b1f;--md-on-surface:#e4e1e6;
+  --md-surface-variant:#46464f;--md-on-surface-variant:#c7c5d0;
+  --md-surface-dim:#131316;--md-surface-bright:#39393c;
+  --md-surface-container-lowest:#0e0e11;--md-surface-container-low:#1b1b1f;--md-surface-container:#1f1f23;--md-surface-container-high:#2a2a2d;--md-surface-container-highest:#353438;
+  --md-outline:#90909a;--md-outline-variant:#46464f;
+  --md-inverse-surface:#e4e1e6;--md-inverse-on-surface:#303034;--md-inverse-primary:#2848ee;
+}

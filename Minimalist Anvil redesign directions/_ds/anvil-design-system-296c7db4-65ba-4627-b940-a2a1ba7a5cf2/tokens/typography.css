@@ -1,0 +1,29 @@
+/* Material 3 type scale, Roboto. Sizes/line-heights are the Flutter
+   TextTheme (2021) values Anvil inherits from ThemeData(useMaterial3: true). */
+:root{
+  --font-sans:'Roboto',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'Roboto Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --font-icons:'Material Icons';
+
+  --weight-light:300; /* @kind other */--weight-regular:400; /* @kind other */--weight-medium:500; /* @kind other */--weight-bold:700; /* @kind other */
+
+  --display-large:400 57px/64px var(--font-sans);      --display-large-tracking:-0.25px; /* @kind other */
+  --display-medium:400 45px/52px var(--font-sans);     --display-medium-tracking:0px; /* @kind other */
+  --display-small:400 36px/44px var(--font-sans);      --display-small-tracking:0px; /* @kind other */
+
+  --headline-large:400 32px/40px var(--font-sans);     --headline-large-tracking:0px; /* @kind other */
+  --headline-medium:400 28px/36px var(--font-sans);    --headline-medium-tracking:0px; /* @kind other */
+  --headline-small:400 24px/32px var(--font-sans);     --headline-small-tracking:0px; /* @kind other */
+
+  --title-large:400 22px/28px var(--font-sans);        --title-large-tracking:0px; /* @kind other */
+  --title-medium:500 16px/24px var(--font-sans);       --title-medium-tracking:0.15px; /* @kind other */
+  --title-small:500 14px/20px var(--font-sans);        --title-small-tracking:0.1px; /* @kind other */
+
+  --body-large:400 16px/24px var(--font-sans);         --body-large-tracking:0.5px; /* @kind other */
+  --body-medium:400 14px/20px var(--font-sans);        --body-medium-tracking:0.25px; /* @kind other */
+  --body-small:400 12px/16px var(--font-sans);         --body-small-tracking:0.4px; /* @kind other */
+
+  --label-large:500 14px/20px var(--font-sans);        --label-large-tracking:0.1px; /* @kind other */
+  --label-medium:500 12px/16px var(--font-sans);       --label-medium-tracking:0.5px; /* @kind other */
+  --label-small:500 11px/16px var(--font-sans);        --label-small-tracking:0.5px; /* @kind other */
+}
