@@ -1,117 +1,120 @@
 # Repository Guidelines
 
 ## Project Overview
-Anvil (working codename) is a Flutter, Android-first mobile app that replicates ~85% of [TinyWow](https://tinywow.com)'s 259-tool catalog **fully on-device** — offline, private, zero per-use cost. Scope: 219/259 tools across PDF, image, video/audio, file-conversion, and on-device AI, plus an on-device LLM agent that drives tools by natural language.
 
-> **Status: IN DEVELOPMENT.** Flutter app scaffolded (`pubspec.yaml`, `lib/`, `test/`, `android/`). Phase status is tracked in PLAN.md. The specs are the contract.
+Anvil is a **Flutter, Android-only** toolkit that runs ~85% of [TinyWow](https://tinywow.com)'s 259-tool catalog **fully on-device** — offline, private, zero per-use cost — plus an on-device LLM assistant that drives those tools by natural language. 220 tools are registered today (`test/registry_test.dart:63`): 11 converter, 34 pdf, 69 image, 52 video, 54 write.
 
-## Repository Layout (current)
-```
-README.md            Entry point + reading order
-DECISIONS.md         Locked product/tech decisions (D1–D7) — read first, do not relitigate
-PLAN.md              Phased roadmap (Phase 0 → 3), effort, sequencing
-ARCHITECTURE.md      Tool-registry pattern, engine abstraction, agent design
-STACK.md             Flutter packages, versions, setup gotchas
-MODEL_DELIVERY.md    Phase 2 model manifest / download / verify / cache spec
-TOOL_CATALOG.md      All 259 tools → bucket + engine (generated)
-RISKS.md             Dependency/legal/perf risks (R1–R10) + mitigations
-data/
-  tinywow_catalog.json      Raw scrape: { counts, tools: {category:[urls]} }, 259 URLs
-  tool_classification.json  Derived: { summary, tools:[{category,slug,bucket,engine,url}] }
-```
-**Read order for any task:** `DECISIONS.md` → `PLAN.md` → `ARCHITECTURE.md` → `STACK.md` → (`MODEL_DELIVERY.md` / `TOOL_CATALOG.md` / `RISKS.md` as needed).
+Shipped: Phase 0 (registry/DI/shell), Phase 1 (deterministic tools), Phase 1.5 (ML tools), Phase 2 (model delivery), Phase 3 (agent). Current version `1.0.0-rc.1+3` (`pubspec.yaml:19`).
 
-## Data Model (the catalog)
-- `data/tinywow_catalog.json` — raw TinyWow scrape (Scrapling, 2026-06-20). Shape: `{ counts: {pdf:47, image:81, write:54, video:59, converter:18}, tools: {category: [url]} }`. URLs are `https://tinywow.com/{category}/{slug}`. Pure URLs, no engine metadata.
-- `data/tool_classification.json` — **derived from** the raw scrape. Shape: `{ summary, tools: [...] }`. Each record: `{category, slug, bucket, engine, url}`.
-  - Example: `{category:"converter", slug:"csv-to-excel", bucket:"ONDEVICE-DET", engine:"dart-libs", url:"..."}`
-- `TOOL_CATALOG.md` consumes both and tables tools by bucket × category.
-- **Buckets** partition by execution mode: `ONDEVICE-DET` (140, Phase 1), `ONDEVICE-ML` (23, Phase 1.5), `ONDEVICE-LLM` (56, Phase 3), `DEFERRED-CLOUD` (33, post-v1), `DROPPED` (7, social — Play policy/legal).
+Locked decisions live in `DECISIONS.md` (D1–D7) — **do not relitigate**: Flutter/Android-first (D1), no Syncfusion (D3), LGPL ffmpeg fork with no v1 fallback (D4), **no cloud in v1** (D5), guided agent chains only (D6), codename Anvil (D7). D6 was amended 2026-09-19: **the confirm gate is gone** — a validated tool call executes immediately; Stop is the only brake. Code referring to a "confirm step" is stale comment text, not behaviour.
 
-## Architecture & Data Flow (intended `lib/`)
-Pluggable **tool-registry** pattern (ported as *patterns, not code* from Google AI Edge Gallery's Kotlin `CustomTask`). A 219-tool app is never a giant switch — every tool self-registers as a `ToolModule` with metadata + engine + optional model + UI + function schema. Home grid, search, and the Phase-3 agent all read the **same registry**.
+Doc reading order for deeper context: `DECISIONS.md` → `PLAN.md` → `ARCHITECTURE.md` → `STACK.md` → (`MODEL_DELIVERY.md` / `TOOL_CATALOG.md` / `RISKS.md`).
+
+## Architecture & Data Flow
+
+**One registry, one executor per engine, one isolate boundary.** A 220-tool app is never a switch statement: each tool is a `ToolModule` that declares metadata, an `EngineKind`, an optional `ModelSpec`, and a function schema. The home grid, search, and the agent all read the same `ToolRegistry`.
 
 ```
-lib/
-  core/      registry, DI, isolate runner, file IO, share intents, result model
-  engines/   pdf/ image/ ffmpeg/ mlkit/ onnx/ asr/ llm/ dartlib/  (one executor each)
-  models/    manifest loader, downloader, sha256 verifier, versioned cache, device gating
-  tools/     one ToolModule per tool, grouped by category (pdf/ image/ video/ file/ write/)
-  agent/     Phase 3: gemma runtime, tool-call loop, arg validation, chain executor
-  ui/        home grid, search, tool screen scaffold, settings, history
+Tool run:   UI → JobNotifier.start(tool, input) → tool.ensureReady() (model gate)
+                → tool.run(ToolInput) → Stream<ToolProgress> → JobState → result/share/history
+
+Agent turn: ChatController.send(text)
+                → busy=true + persist user turn  (BEFORE the slow model load)
+                → ModelManager.ensureReady(taskId) → LlmEngine.ensureLoaded(...)
+                → shortlistTools(request, limit 6) → AgentSession(chat, tools, availableFiles)
+                → LlmChat stream → LlmToolCall → validateCall(...) → AgentToolCall
+                → _runStep executes the tool → output becomes next step's availableFiles
+                → repeat up to _maxChainSteps (5) → AgentDone
 ```
 
-Data flow: **registry → engine executor → result → save/share**. The Phase-3 agent path: `NL request → Gemma 4 E2B (function calling) → arg validator (against fnSchema) → engine executor → result → next step/done`.
+Layering is strict and one-directional: `lib/core` ← `lib/engines` + `lib/models` + `lib/tools` ← `lib/agent` + `lib/ui`. A tool body **never imports a plugin**; it goes through its engine (`lib/engines/*_engine.dart`). `lib/agent/**` never imports `flutter_gemma` — it talks to the `LlmChat` seam (`lib/engines/llm_chat.dart`), which is why the whole agent loop is host-testable.
 
-## Key Patterns (apply when coding)
-- **`ToolModule` is the unit of work.** Every tool implements:
-  ```dart
-  abstract class ToolModule {
-    ToolMeta   get meta;        // id, category, label, icon, description, tinywow slug
-    EngineKind get engine;      // dartlib|pdf|image|ffmpeg|mlkit|onnx|asr|llm
-    ModelSpec? get model;       // null for deterministic (Phase 1); set for ML/LLM
-    Map<String, dynamic> get fnSchema;        // JSON-schema {name, description, params}
-    Future<void> ensureReady();               // trigger model download (Phase 2)
-    Stream<ToolProgress> run(ToolInput input);// streamed progress + result
-    Widget buildScreen(BuildContext context); // tool detail UI
-  }
-  ```
-- **DI auto-discovery:** bind each module into a `Set<ToolModule>` via `get_it`/`riverpod` (mirrors Gallery's Hilt `@IntoSet`). Never hand-maintain a tool list.
-- **`EngineKind` selects the executor.** A tool body NEVER imports a plugin directly. Each executor implements a tiny common contract — `prepare()` / `execute(input) -> Stream<ToolProgress>` / `dispose()` — so the FFmpeg fork can be swapped in one file (D4).
-- **Heavy `run()` work goes in an isolate** (`compute` / `Isolate.run`). The UI thread never blocks; progress is streamed with cancel support.
-- **Phase-3 agent: validate every tool-call's args against `fnSchema` before executing.** A 2B model hallucinates args — never run unvalidated. Guided chains only (Tier 3a single-tool, 3b 2–3 step, validated steps auto-execute); no full autonomy, no cloud planner.
-- **No cloud in v1** (D5). Everything on-device; cloud-only tools are deferred, not stubbed.
+Key invariants:
+- **`LlmEngine` holds exactly one model.** `ensureLoaded` coalesces concurrent calls (same config joins the in-flight load, a different one queues); `unload()` queues behind an in-flight load — tearing down mid-create is a native crash. Transitions broadcast on `statusStream` as `LlmStatus(LlmPhase.unloaded|loading|loaded, taskId, since)`.
+- **Heavy pure-Dart work goes through `runOffThread` (`lib/core/isolate_runner.dart`)**; only sendable values may be captured (no `getIt`, `File`, widgets).
+- **Long jobs hold the process up.** `ForegroundKeepAlive` (`lib/core/foreground_task.dart`) starts an Android `dataSync` foreground service so a chat turn, transcode, or model download survives the user switching apps.
 
-## Engines → Packages (STACK.md)
-| EngineKind | Package | Phase | Note |
-|---|---|---|---|
-| `dartlib` | `csv`,`xml`,`excel_community` (pure Dart) | 1 | converters |
-| `pdf` | `pdfrx` + `pdf` + native channel | 1 | D3: no Syncfusion; native = PdfBox-Android/PdfRenderer |
-| `image` | native platform-channel + `flutter_image_compress` | 1 | pure-Dart `image` too slow |
-| `ffmpeg` | `ffmpeg_kit_flutter` (sk3llo **LGPL** fork) | 1 | D4: no fallback v1; isolate behind interface |
-| `mlkit` | `google_mlkit_subject_segmentation` / `_text_recognition` | 1.5 | remove-bg, OCR |
-| `onnx` | `onnxruntime` | 1.5 | upscale/inpaint/colorize; models via Phase 2 |
-| `asr` | `sherpa_onnx` | 1.5 | transcription, VAD |
-| `llm` | `flutter_gemma` (Gemma 4 E2B) | 3 | write tools + agent |
+## Key Directories
 
-Support packages: DI/state `get_it`+`riverpod`; pick/share `file_picker`,`share_plus`,`receive_sharing_intent`; download `dio` (range/resume); hashing `crypto` (sha256); storage `path_provider`,`sqflite`/`drift`.
+| Path | Purpose |
+|---|---|
+| `lib/core/` | `tool_module.dart` (the contract), `registry.dart` (`buildTools()`), `di.dart` (get_it wiring), `tool_io.dart`, `fn_schema.dart`, `isolate_runner.dart`, `app_log.dart`, `foreground_task.dart`, sqflite repositories (history/settings/log/chat) |
+| `lib/engines/` | One executor per `EngineKind`: `pdf_engine`, `image_engine`, `ffmpeg_engine`, `mlkit_engine`, `onnx_engine`, `asr_engine`, `llm_engine` (+ `llm_chat.dart` seam) |
+| `lib/models/` | Phase-2 delivery: `manifest*.dart`, `downloader.dart`, `model_cache.dart`, `device_caps.dart`, `model_manager.dart` |
+| `lib/tools/<category>/` | `ToolModule` implementations + a `build*Tools()` list per file |
+| `lib/agent/` | `agent_session.dart` (tool-call loop), `arg_validator.dart`, `tool_shortlist.dart`, `chain_prompt.dart`, `attachment_ingest.dart` |
+| `lib/ui/` | `providers.dart` (riverpod), `agent/` (chat), `tool/` (+ `editors/` WYSIWYG screens), `home/`, `settings/`, `widgets/` (`slab.dart`, `model_gate.dart`, `llm_memory_panel.dart`), `tokens.dart` |
+| `android/app/src/main/kotlin/com/arunesh/anvil/` | Platform channels: `ImageChannel` (`anvil/image`), `PdfChannel` (`anvil/pdf`), `ForegroundChannel` (`anvil/foreground`), `KeepAliveService` |
+| `test/`, `integration_test/` | 30 host tests mirroring `lib/`, 1 on-device smoke test |
+| `data/`, `assets/manifest.json` | TinyWow catalog + classification JSON; curated model manifest (bundled, v4) |
 
-## Runtime / Tooling Preferences
-- **Flutter, Android-first** (D1). `minSdk 26+` recommended for ML/NPU. ONNX/Gemma need >2 GB RAM → device-gated.
-- **Flutter stable** for the app; **master channel required only for Phase 3** `flutter_gemma` (`--enable-experiment=native-assets`).
-- iOS (parity later): manual `Podfile` linking MediaPipe `MediaPipeTasksGenAI` for Phase 3.
-- FFmpeg: use the **LGPL** (non-GPL, `min-gpl`-free) fork build; prefer royalty-free codecs (VP9/Opus/WebP); pin the exact fork version (R1).
+## Development Commands
 
-## Development Commands (once scaffolded)
-No build system exists yet. After `flutter create` scaffolds the project, standard commands apply:
 ```bash
-flutter pub get                 # install deps
-flutter analyze                 # static analysis / lint (analysis_options.yaml)
-flutter test                    # unit/widget tests (test/)
-dart format .                   # formatting
-flutter run -d <device>         # run on Android device/emulator
-flutter build apk               # release build
-# Phase 3 only (flutter_gemma): Flutter master channel +
-flutter run --enable-experiment=native-assets
+flutter pub get
+flutter analyze                       # must be clean; flutter_lints, android/ excluded
+dart format .
+flutter test                          # full host suite (~264 tests, ~35 s)
+flutter test test/chat_chain_test.dart --plain-name "a cold model"   # one test
+flutter run -d <device>
+flutter build apk --release           # signs with android/key.properties, else debug keys
+flutter test integration_test -d <device>                             # on-device smoke, needs models
+flutter test --dart-define=ANVIL_REQUIRE_MODELS=true integration_test -d <device>  # QA gate: fail, don't skip
 ```
 
-## Code Conventions
-- **Dart/Flutter standard style:** `dart format` (2-space indent); files `snake_case.dart`; types `PascalCase`; members/vars `lowerCamelCase`; constants `lowerCamelCase`.
-- **Tool layout:** one `ToolModule` subclass per tool under `lib/tools/<category>/`; tool `id` matches its TinyWow `slug` from `tool_classification.json`.
-- **Errors/async:** stream progress + failures through `Stream<ToolProgress>`; surface device-incapability as a graceful "needs a more capable device" state, not a crash (R5). Cancellable jobs.
-- **No second convention:** reuse the registry/executor/isolate pattern above; do not introduce a parallel mechanism beside it.
+There is no CI, no Makefile, and no scripts directory — these commands are the whole toolchain. The release APK is ~546 MB (universal, all ABIs and native runtimes); Play requires `--split-per-abi` or an app bundle before store submission.
 
-## Model Delivery (Phase 2, MODEL_DELIVERY.md)
-On-demand only for `ONDEVICE-ML` tools. Flow: `tool.ensureReady()` → fetch curated **manifest** (ETag-cached) → resolve `task_id` to a device-gated **variant** (`fast`|`quality` by RAM/accelerator) → resumable download (`dio` range) → **sha256 verify** → unpack → versioned cache → load (`onnxruntime`/`sherpa_onnx`/`flutter_gemma`). Manifest variant fields: `id, tier, url, sha256, sizeBytes, runtime, minRamGb, accelerator, version`. No variant meets device limits → tool disabled with a message. LRU eviction + manual storage manager; offline once cached. "Best model" = WE curate it offline; the app selects a variant, it does not auto-discover models.
+## Code Conventions & Common Patterns
+
+**Formatting/naming.** `dart format` (2-space); `snake_case.dart` files, `PascalCase` types, `lowerCamelCase` members, private helpers prefixed `_`. Every library starts with a `///` doc comment block ending in `library;` that states *why* the file exists (see `lib/engines/llm_engine.dart:1`). Imports are grouped `dart:` → `package:` third-party → `package:anvil/…`, alphabetical within a group. Non-obvious decisions get an inline comment naming the constraint (e.g. the `maxTokens` rationale at `lib/engines/llm_engine.dart`).
+
+**Adding a tool** — the single most common change:
+1. Subclass `BaseToolModule` in `lib/tools/<category>/…` (defaults: `model` null, `fnSchema` = `fnSchemaFor(meta)`, `ensureReady` no-op, `fileSetError` null). Most files already have a reusable shape to extend — `_PdfToPdf`, `_ManyToPdf`, `_PureConvert`, `_Generator`, `_TextToText`.
+2. `meta.id` **must equal the TinyWow slug** (`data/tool_classification.json`); `qualifiedId` is `<category>/<id>` and must be unique.
+3. `run()` yields zero or more `ToolRunning(fraction?, message?)` then exactly one `ToolSucceeded(ToolResult(...))`; throw `ToolException('user-facing message')` for failures.
+4. Append it to the file's `build*Tools()` list — `buildTools()` in `lib/core/registry.dart` is the one canonical list; never hand-maintain a second one.
+5. Set `agentCallable: false` for tools whose real input comes from a WYSIWYG editor, and implement `fileSetError` for combinations extensions cannot express (e.g. "one PDF plus one image"). Extension checks belong in `acceptedExtensions`, not `fileSetError`.
+
+**DI split.** `getIt` (`lib/core/di.dart`) holds lifecycle-free singletons: DB, repositories, services, engines, `ModelManager`, `ToolRegistry`, `ForegroundKeepAlive`. Riverpod holds ephemeral UI state (`lib/ui/providers.dart`). Tool bodies resolve engines via `getIt<XEngine>()`; widgets read providers.
+
+**Riverpod usage.** `Provider` for derived lists (`filteredToolsProvider`), `FutureProvider` for cached async reads (`availableModelsProvider`, `modelStatusProvider(taskId)`), `StreamProvider` for live state (`llmStatusProvider` — re-emits every second while loading so the UI can show elapsed time), `Notifier` for logic (`ChatController` non-autoDispose so chat survives tab switches; `JobNotifier` autoDispose). After mutating model state you must `ref.invalidate` the dependent providers — see `ModelDownloadsNotifier.download` in `lib/ui/providers.dart`.
+
+**Optional-singleton accessor pattern.** Cross-cutting services that must never break a caller degrade to no-ops when unregistered: `_log()` in `lib/core/app_log.dart` and `_service()` in `lib/core/foreground_task.dart`. Call them through the top-level helpers (`logAction`/`logWarning`/`logError`, `keepAliveHold`/`keepAliveRelease`) — never `getIt<AppLog>()` directly.
+
+**Keep-alive holds** are per-owner and idempotent (`keepAliveChat`, `keepAliveTool`, `keepAliveDownload`); every hold needs a matching release on *every* terminal path, including cancel and error.
+
+**Errors/async.** User-facing failures are `ToolException`; `JobNotifier` (`lib/ui/tool/job_controller.dart`) is the single place thrown errors become `JobFailed`. Sealed classes + exhaustive `switch` pattern matching everywhere (`ToolProgress`, `JobState`, `LlmEvent`, `AgentEvent`) — no `default:` arms. Device incapability surfaces as a disabled "needs a more capable device" panel (`lib/ui/widgets/model_gate.dart`), never a crash.
+
+**UI.** Colours only via `Theme.of(context).extension<AnvilColors>()!`, radii from `AnvilRadii`, monospace via `AnvilText.mono` (`lib/ui/tokens.dart`); compose from `lib/ui/widgets/slab.dart` (`SlabPanel`, `ToolRow`, `PrimaryButton`, `SecondaryButton`, `IconChip`, `InfoCard`, `formatBytes`). Model labels come from `modelTaskInfo`/`modelTaskLabel` in `model_gate.dart` — one source, no per-screen label maps.
+
+**Agent specifics.** The model addresses tools by `fnNameFor(meta)` (`pdf/add-images` → `pdf_add_images`); `AgentSession._resolve` also accepts normalized and bare-slug drift, but two tools normalizing identically are dropped from loose lookup. Every call passes `validateCall` before it runs (R3: a 2B model hallucinates args); invalid calls are fed back for repair within the repair budget. Shortlist is capped at 6 tools per step and chains at 5 steps to fit the KV budget.
+
+## Important Files
+
+- `lib/main.dart` — bootstrap: `registerNativeLicenses()` → `configureDependencies()` → error capture → `pruneExpiredHistory()` → `runApp`.
+- `lib/core/tool_module.dart` — the real `ToolModule`/`BaseToolModule`/`ToolMeta` contract (ground truth over any doc sketch; there is deliberately **no** `buildScreen` member).
+- `lib/core/registry.dart`, `lib/core/di.dart` — tool discovery and singleton wiring.
+- `lib/engines/llm_engine.dart` + `lib/engines/llm_chat.dart` — the only files touching `flutter_gemma`.
+- `lib/ui/agent/chat_controller.dart` — chain loop, model-load ordering, keep-alive holds, `unloadModel()`.
+- `assets/manifest.json` — curated model catalog (variants: `id, tier, url, sha256, sizeBytes, runtime, minRamGb, accelerator, supportsImage, family, maxTokens, version`). `kModelManifestUrl = null` in `di.dart`, so v1 uses the bundled manifest only.
+- `android/app/build.gradle.kts`, `android/gradle.properties`, `android/app/src/main/AndroidManifest.xml` — build and platform config (see below).
+- `data/tool_classification.json` — `{category, slug, bucket, engine, url}` per tool; buckets `ONDEVICE-DET|ONDEVICE-ML|ONDEVICE-LLM|DEFERRED-CLOUD|DROPPED`.
+
+## Runtime/Tooling Preferences
+
+- **Flutter stable + Dart SDK `^3.12.1`**; `pub` is the package manager. Android-only: there is no `ios/`, `web/`, or desktop directory.
+- `minSdk 26`, `compileSdk = maxOf(flutter.compileSdkVersion, 37)` (forced by `receive_sharing_intent` 1.9.0), JVM 17, AGP 9.0.1, Kotlin 2.3.20, Gradle 9.1.0.
+- **Do not flip `android.r8.strictFullModeForKeepRules` back to true** (`android/gradle.properties`): AGP 9's strict mode breaks ML Kit's AGP-8-era consumer keep rules and crashes OCR/segmentation in minified release builds.
+- `packaging.jniLibs.pickFirsts = **/libonnxruntime.so` resolves the `onnxruntime` vs `sherpa_onnx` duplicate; `third_party/flutter_avif_android` is a vendored override dropping a duplicate plugin class. Both are load-bearing.
+- Dependencies carry inline rationale in `pubspec.yaml` — honour it: `excel_community` (not `excel`), `ffmpeg_kit_flutter_new_full` LGPL fork pinned (R1), royalty-free codecs only (mpeg4/aac, vp9/opus — no x264/AV1 via ffmpeg; AVIF via `flutter_avif`), `flutter_gemma` 1.8.2 + `flutter_gemma_litertlm` 1.6.3.
+- Adding a platform channel means touching three places: the Kotlin object, `MainActivity.configureFlutterEngine`, and (for services/permissions) `AndroidManifest.xml`. `android/**` is excluded from the Dart analyzer.
 
 ## Testing & QA
-- Framework: `flutter_test` (unit + widget); `test/` mirrors `lib/`.
-- **Run only tests you add/modify** unless asked otherwise. Test behavior, not plumbing: tool input→output correctness, arg-validation rejection of bad args, device-gating disable path, chain step hand-off.
-- **Acceptance gates per phase** (PLAN.md) are the QA bar: P0 = csv→json runs end-to-end through registry→engine→result→share; P1 = PDF+image usable as a standalone toolkit (first RC); P1.5 = remove-bg+OCR+one upscale on mid-range Android; P3 = "compress this PDF and convert to grayscale" → agent chains two tools unattended.
-- Early de-risking spikes before committing: Phase 1 FFmpeg fork build + PDF native ops; Phase 3 `flutter_gemma` integration (R1, R6).
 
-## Key Risks to Respect (RISKS.md)
-- **R1 (High):** `ffmpeg_kit_flutter` upstream retired Jan 2025 → use sk3llo fork, isolate behind executor, pin version.
-- **R3 (High):** FunctionGemma 270M ≈58% tool-calling accuracy → primary is Gemma 4 E2B + mandatory arg validation + guided chains.
-- **R8:** `pdfrx` lacks compress/encrypt → do those via native platform-channel (PdfBox-Android).
-- Also: codec patents (R2, prefer royalty-free), model size (R4, on-demand+LRU), device floor (R5, gate+disable), `flutter_gemma` setup friction (R6), thermal/battery on video (R7, cap length/resolution).
+- `flutter_test` + `sqflite_common_ffi`; `test/` mirrors `lib/`. Run the tests you touch; run the full suite before declaring done (it takes ~35 s).
+- **Host-test harness:** `sqfliteFfiInit()`, `databaseFactory = databaseFactoryFfi`, `inMemoryDatabasePath` with a hand-written `CREATE TABLE` in `setUp`, `getIt.registerSingleton<…>` per dependency, `await getIt.reset()` in `tearDown`. Logic tests use a bare `ProviderContainer()` + `addTearDown(container.dispose)`; widget tests use `ProviderScope(overrides: […])`.
+- **Fakes:** engines that reach native code are faked with `implements X` + `noSuchMethod` forwarding (`_FakeLlmEngine`, `_FakePdfEngine`, `_FakeMlKit`, `_FakeOnnx`, `_FakeAsr`, `_FakeFfmpeg`) — see the comment at `test/write_tools_test.dart:19`. `extends` is only for controllers with a safe base (`_FakeChatNotifier`). The agent loop is driven by scripted `LlmEvent` lists through `_ScriptedChat`.
+- **Widget tests** must override `modelStatusProvider(ChatSession.defaultModelTaskId)`, `availableModelsProvider`, and (when the LLM status is read) `llmStatusProvider`; screens with spinners need `pump()` + a fixed duration, never `pumpAndSettle()`. Async controller state is awaited with the `settle(container, cond)` polling helper in `test/chat_chain_test.dart`.
+- **Test bar:** assert observable behaviour (page counts, PNG magic bytes, ffmpeg arg lists, state transitions, validation rejections, device-gating disable paths), not plumbing. A regression test must fail before the fix — e.g. the cold-model test in `chat_chain_test.dart` fails if the model load is moved back ahead of persisting the user turn. Avoid pinning UI wording beyond what a user actually depends on.
+- **Not testable on host:** flutter_gemma FFI, the PDF Rust plugin, ffmpeg execution, ML Kit, ONNX Runtime. Those are covered by `integration_test/device_smoke_test.dart`, which skips missing models unless `ANVIL_REQUIRE_MODELS=true`.
+- **Phase acceptance gates** (`PLAN.md`) are the QA bar; the Phase-3 gate is "compress this PDF and convert to grayscale" chaining two tools end-to-end on a device.
