@@ -1,9 +1,10 @@
 /// Riverpod state + execution for the unified Ask tab: persistent multi-session
-/// chat with streamed thinking/answers and the D6 tool-confirm gate.
+/// chat with streamed thinking/answers and auto-executed tool steps.
 ///
 /// Owns the session list, the current transcript, in-flight streaming state,
-/// the pending confirm (nothing runs without the user's tap), staged
-/// attachments, and the live [AgentSession]. Plain [NotifierProvider] — not
+/// staged attachments, and the live [AgentSession]. A validated tool call runs
+/// the moment the model emits it; Stop cancels the chain. Plain
+/// [NotifierProvider] — not
 /// autoDispose — so the chat survives tab switches inside the shell's
 /// IndexedStack.
 library;
@@ -22,6 +23,7 @@ import 'package:anvil/agent/tool_shortlist.dart';
 import 'package:anvil/core/app_log.dart';
 import 'package:anvil/core/chat_repository.dart';
 import 'package:anvil/core/di.dart';
+import 'package:anvil/core/foreground_task.dart';
 import 'package:anvil/core/fn_schema.dart';
 import 'package:anvil/core/history_repository.dart';
 import 'package:anvil/core/registry.dart';
@@ -37,7 +39,6 @@ class ChatUiState {
   final List<ChatMessage> messages;
   final String streamingText;
   final String streamingThinking;
-  final AgentNeedsConfirm? pending;
   final List<InputFile> attachments;
   final String? stepProgress;
   final bool busy;
@@ -48,7 +49,6 @@ class ChatUiState {
     this.messages = const [],
     this.streamingText = '',
     this.streamingThinking = '',
-    this.pending,
     this.attachments = const [],
     this.stepProgress,
     this.busy = false,
@@ -64,8 +64,6 @@ class ChatUiState {
     List<ChatMessage>? messages,
     String? streamingText,
     String? streamingThinking,
-    AgentNeedsConfirm? pending,
-    bool clearPending = false,
     List<InputFile>? attachments,
     String? stepProgress,
     bool clearStepProgress = false,
@@ -76,7 +74,6 @@ class ChatUiState {
     messages: messages ?? this.messages,
     streamingText: streamingText ?? this.streamingText,
     streamingThinking: streamingThinking ?? this.streamingThinking,
-    pending: clearPending ? null : (pending ?? this.pending),
     attachments: attachments ?? this.attachments,
     stepProgress: clearStepProgress
         ? null
@@ -140,7 +137,6 @@ class ChatController extends Notifier<ChatUiState> {
       attachments: const [],
       streamingText: '',
       streamingThinking: '',
-      clearPending: true,
       busy: false,
     );
   }
@@ -154,7 +150,6 @@ class ChatController extends Notifier<ChatUiState> {
       attachments: const [],
       streamingText: '',
       streamingThinking: '',
-      clearPending: true,
       busy: false,
     );
   }
@@ -173,7 +168,6 @@ class ChatController extends Notifier<ChatUiState> {
       state = state.copyWith(
         clearCurrentId: true,
         messages: const [],
-        clearPending: true,
         busy: false,
       );
     }
@@ -235,22 +229,47 @@ class ChatController extends Notifier<ChatUiState> {
     }
   }
 
+  /// Hands the model's RAM back. Any in-flight turn is stopped first — the
+  /// native engine must not be torn down under a generating conversation —
+  /// and the next send re-loads from the cached file.
+  Future<void> unloadModel() async {
+    await stop();
+    await getIt<LlmEngine>().unload();
+  }
+
   /// Resolves + loads the model for [taskId] and returns whether it is
   /// vision-capable. Shared by [send] and [warm].
   Future<bool> _prepareEngine(String taskId) async {
     final loaded = await getIt<ModelManager>().ensureReady(
       ModelSpec(taskId: taskId),
     );
+    return _loadEngine(loaded);
+  }
+
+  /// Loads an already-resolved model into the engine. Split out of
+  /// [_prepareEngine] so [send] can persist the user's turn — and flip the UI
+  /// into its busy/loading state — BEFORE blocking on the tens of seconds a
+  /// cold multi-GB `.litertlm` takes to map and build its GPU kernels.
+  Future<bool> _loadEngine(LoadedModel loaded) async {
     final v = loaded.variant;
     await getIt<LlmEngine>().ensureLoaded(
       loaded.filePath,
       supportImage: v.supportsImage,
       family: v.family,
       maxTokens: v.maxTokens,
+      taskId: loaded.taskId,
     );
     _modelFamily = v.family;
     return v.supportsImage;
   }
+
+  /// Keeps the process alive while a turn or a tool step runs, so the user can
+  /// switch apps mid-chain. Held from [send] and each step; released on every
+  /// terminal state.
+  Future<void> _holdProcess(String label) =>
+      keepAliveHold(keepAliveChat, label);
+
+  Future<void> _releaseProcess() => keepAliveRelease(keepAliveChat);
 
   // --- Turn ---------------------------------------------------------------
 
@@ -273,10 +292,19 @@ class ChatController extends Notifier<ChatUiState> {
     final attachments = state.attachments;
     final priorMessages = state.messages;
 
+    // Busy BEFORE the first await: the composer has already been cleared, and
+    // a cold model blocks this turn for tens of seconds. Without the flip the
+    // screen looks frozen and Send stays tappable.
+    state = state.copyWith(busy: true);
+    await _holdProcess('Anvil is answering');
+
     try {
-      // Model + capability (Send is gated on a cached model, so this is quick;
-      // a composer-focus warm() may already have loaded it).
-      final supportsImage = await _prepareEngine(session.modelTaskId);
+      // Resolve the cached model file. Send is gated on a cached model, so
+      // this is a manifest+disk check, not a download.
+      final loaded = await getIt<ModelManager>().ensureReady(
+        ModelSpec(taskId: session.modelTaskId),
+      );
+      final supportsImage = loaded.variant.supportsImage;
 
       // Persist the user turn immediately (chips classified by extension).
       final refs = [
@@ -301,6 +329,7 @@ class ChatController extends Notifier<ChatUiState> {
         attachments: const [],
         busy: true,
       );
+
       logAction(
         logSourceAgent,
         'Ask: $trimmed',
@@ -308,6 +337,10 @@ class ChatController extends Notifier<ChatUiState> {
             ? null
             : [for (final f in attachments) f.name].join('\n'),
       );
+
+      // The slow part, now that the turn is on screen: loading reports its
+      // phase on LlmEngine.statusStream (llmStatusProvider).
+      await _loadEngine(loaded);
 
       // Ingest attachments: images for vision, text blocks otherwise.
       final images = <Uint8List>[];
@@ -353,6 +386,9 @@ class ChatController extends Notifier<ChatUiState> {
   /// the request (plus completed-step labels), seeds either the original prompt
   /// or a continuation prompt, and starts the single-turn [AgentSession].
   Future<void> _startStep({required bool first}) async {
+    // Free the finished step's conversation (its KV cache) before the next
+    // chat is created; the model itself stays loaded.
+    _closeSession();
     final session = state.current!;
     final query = first ? _request : chainShortlistQuery(_request, _steps);
     final candidates = shortlistTools(
@@ -423,15 +459,18 @@ class ChatController extends Notifier<ChatUiState> {
     _consume(_session!.start(prompt, images: first ? _images : const []));
   }
 
-  Future<void> confirm() async {
-    final pending = state.pending;
+  /// Runs a validated step the moment the model produces it. Nothing waits on
+  /// a tap: the model chooses, [validateCall] vets the args, and the result
+  /// feeds the next step. Stop cancels a chain mid-flight.
+  Future<void> _runStep(AgentToolCall pending) async {
     final session = _session;
-    if (pending == null || session == null) return;
-    state = state.copyWith(clearPending: true, busy: true);
+    if (session == null) return;
+    state = state.copyWith(busy: true);
+    await _holdProcess('Anvil is running a step');
     final call = pending.call;
     logAction(
       logSourceAgent,
-      'Step ${pending.step} confirmed: ${call.tool.meta.qualifiedId}',
+      'Step ${pending.step} running: ${call.tool.meta.qualifiedId}',
     );
     final ToolResult result;
     try {
@@ -512,20 +551,10 @@ class ChatController extends Notifier<ChatUiState> {
       await _touch();
       state = state.copyWith(busy: false);
       _closeSession();
+      await _releaseProcess();
       return;
     }
     await _startStep(first: false);
-  }
-
-  void reject() {
-    if (state.pending == null) return;
-    logWarning(logSourceAgent, 'Step cancelled by the user');
-    final id = state.currentId;
-    if (id != null) {
-      _addAssistant(id, ChatMessageKind.text, text: 'Cancelled.');
-    }
-    state = state.copyWith(clearPending: true, busy: false);
-    _closeSession();
   }
 
   Future<void> stop() async {
@@ -534,6 +563,7 @@ class ChatController extends Notifier<ChatUiState> {
     await _flushStreamingAssistant();
     _closeSession();
     state = state.copyWith(busy: false, clearStepProgress: true);
+    await _releaseProcess();
   }
 
   // --- Stream consumption -------------------------------------------------
@@ -558,8 +588,8 @@ class ChatController extends Notifier<ChatUiState> {
       case AgentText(:final text):
         state = state.copyWith(streamingText: state.streamingText + text);
       // Terminal events (each ends the stream) do async persistence.
-      case final AgentNeedsConfirm c:
-        _onNeedsConfirm(c);
+      case final AgentToolCall c:
+        _onToolCall(c);
       case AgentDone(:final answer):
         _onDone(answer);
       case AgentStuck(:final message):
@@ -567,14 +597,14 @@ class ChatController extends Notifier<ChatUiState> {
     }
   }
 
-  Future<void> _onNeedsConfirm(AgentNeedsConfirm c) async {
+  Future<void> _onToolCall(AgentToolCall c) async {
     logAction(
       logSourceAgent,
-      'Proposed step ${c.step}: ${c.call.tool.meta.qualifiedId}',
+      'Step ${c.step}: ${c.call.tool.meta.qualifiedId}',
       detail: _callDetail(c.call),
     );
     await _flushStreamingAssistant();
-    state = state.copyWith(pending: c, busy: false);
+    await _runStep(c);
   }
 
   Future<void> _onDone(String answer) async {
@@ -584,10 +614,11 @@ class ChatController extends Notifier<ChatUiState> {
     await _touch();
     state = state.copyWith(busy: false);
     _closeSession();
+    await _releaseProcess();
   }
 
   /// A model failure must not dead-end the turn: fall back to the
-  /// deterministic shortlist's best match, still behind the D6 confirm tap.
+  /// deterministic shortlist's best match and run it.
   Future<void> _onStuck(String message) async {
     logWarning(logSourceAgent, 'Assistant gave up', detail: message);
     await _flushStreamingAssistant();
@@ -607,22 +638,22 @@ class ChatController extends Notifier<ChatUiState> {
       await _addAssistant(
         id,
         ChatMessageKind.text,
-        text: "I'm not sure I understood that. Best match — run it?",
+        text: "I'm not sure I understood that — running the closest match.",
       );
     }
-    await _onNeedsConfirm(fb);
+    await _onToolCall(fb);
   }
 
   /// First shortlisted tool whose call validates with only the step's files
   /// filled in. Candidates are filtered by whether a file is attached, so we
   /// never propose a file tool with no file (or a generator over an
   /// attachment the user clearly wants acted on).
-  AgentNeedsConfirm? _fallbackProposal() {
+  AgentToolCall? _fallbackProposal() {
     final wantsInput = _stepFiles.isNotEmpty;
     for (final t in _lastCandidates) {
       if (t.meta.requiresInput != wantsInput) continue;
       try {
-        return AgentNeedsConfirm(
+        return AgentToolCall(
           validateCall(t, fillFileArgs(t, const {}, _stepFiles)),
           _steps.length + 1,
         );
@@ -649,10 +680,10 @@ class ChatController extends Notifier<ChatUiState> {
     }
     state = state.copyWith(
       busy: false,
-      clearPending: true,
       clearStepProgress: true,
     );
     _closeSession();
+    await _releaseProcess();
   }
 
   /// Persists accumulated streaming thinking/text as an assistant message when

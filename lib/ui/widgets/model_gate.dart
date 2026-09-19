@@ -153,3 +153,19 @@ Widget? buildModelGate(BuildContext context, WidgetRef ref, String taskId) {
 bool modelReady(WidgetRef ref, String? taskId) =>
     taskId == null ||
     ref.watch(modelStatusProvider(taskId)).asData?.value == ModelStatus.cached;
+
+/// Display label + glyph for a model task id — the single source used by the
+/// models catalog, the chat model picker and the memory panel. Falls back to
+/// the raw id for a task this build has no copy for.
+({String label, IconData icon}) modelTaskInfo(String taskId) => switch (taskId) {
+  'image.upscale' => (label: 'Upscale image', icon: Icons.hd),
+  'image.colorize' => (label: 'Colorize', icon: Icons.palette_outlined),
+  'image.deblur' => (label: 'Deblur & sharpen', icon: Icons.deblur),
+  'image.inpaint' => (label: 'Object removal', icon: Icons.healing),
+  'asr.transcribe' => (label: 'Transcribe audio', icon: Icons.graphic_eq),
+  'agent.llm' => (label: 'Gemma 4 E2B', icon: Icons.smart_toy_outlined),
+  'agent.llm.qwen' => (label: 'Qwen3 (4B / 1.7B)', icon: Icons.smart_toy_outlined),
+  _ => (label: taskId, icon: Icons.memory),
+};
+
+String modelTaskLabel(String taskId) => modelTaskInfo(taskId).label;

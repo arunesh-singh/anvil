@@ -38,7 +38,7 @@ Runs in parallel with 1.5 (1.5 consumes it).
 - `flutter_gemma` + **Gemma 4 E2B** (function calling). The 56 Write/summarize/translate tools become on-device LLM tools.
 - **Agent tiers (D6):** 3a NL→single-tool routing (reliable) → 3b 2–3 step guided chains (feasible w/ guardrails). **No 3c full autonomy, no cloud planner.**
 - Each `ToolModule.fnSchema` is exposed as a callable function; **all tool-call args validated** before execution.
-- **Acceptance:** "compress this PDF and convert to grayscale" → agent picks + chains the two on-device tools with a confirm step.
+- **Acceptance:** "compress this PDF and convert to grayscale" → agent picks + chains the two on-device tools unattended (validator-gated, Stop cancels).
 
 ## Out of scope (see DECISIONS.md)
 - Deferred (cloud, post-v1): 20 Office/ebook/image-gen tools.

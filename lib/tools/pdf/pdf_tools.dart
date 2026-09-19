@@ -62,6 +62,14 @@ String _ext(String name) {
   return e == 'jpeg' ? 'jpg' : (e == 'tif' ? 'tiff' : e);
 }
 
+/// First PDF / first stampable raster in a mixed selection — the two halves
+/// `pdf/add-images` and `pdf/sign` need, in either order.
+InputFile? _pdfIn(List<InputFile> files) =>
+    files.where((f) => _ext(f.name) == 'pdf').firstOrNull;
+
+InputFile? _imageIn(List<InputFile> files) =>
+    files.where((f) => const ['png', 'jpg'].contains(_ext(f.name))).firstOrNull;
+
 /// Normalizes any accepted raster input to bytes `imagesToPdf` understands
 /// (jpg/png pass through; gif/tiff/webp/psd transcode; heic decodes natively).
 Future<Uint8List> _toPdfReadyImage(Uint8List src, String ext) => switch (ext) {
@@ -112,10 +120,13 @@ class _ManyToPdf extends BaseToolModule {
   EngineKind get engine => EngineKind.pdf;
 
   @override
+  String? fileSetError(List<InputFile> files) =>
+      files.length < minFiles ? 'Select at least $minFiles files.' : null;
+
+  @override
   Stream<ToolProgress> run(ToolInput input) async* {
-    if (input.files.length < minFiles) {
-      throw ToolException('Select at least $minFiles files.');
-    }
+    final reject = fileSetError(input.files);
+    if (reject != null) throw ToolException(reject);
     yield const ToolRunning(message: 'Reading files…');
     yield const ToolRunning(fraction: 0.3, message: 'Building PDF…');
     final out = await _fn(getIt<PdfEngine>(), input.files);
@@ -204,13 +215,15 @@ class _PdfPlusImage extends BaseToolModule {
   EngineKind get engine => EngineKind.pdf;
 
   @override
+  String? fileSetError(List<InputFile> files) =>
+      _pdfIn(files) == null || _imageIn(files) == null
+          ? 'Select one PDF and one PNG/JPG image.'
+          : null;
+
+  @override
   Stream<ToolProgress> run(ToolInput input) async* {
-    final pdfFile = input.files
-        .where((f) => _ext(f.name) == 'pdf')
-        .firstOrNull;
-    final imageFile = input.files
-        .where((f) => const ['png', 'jpg'].contains(_ext(f.name)))
-        .firstOrNull;
+    final pdfFile = _pdfIn(input.files);
+    final imageFile = _imageIn(input.files);
     if (pdfFile == null || imageFile == null) {
       throw const ToolException('Select one PDF and one PNG/JPG image.');
     }
@@ -751,6 +764,20 @@ List<ToolModule> buildPdfTools() => [
     Icons.image,
     'Make a PDF with the image centered on the page, and an optional caption below it.',
     const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+    // "create a pdf with the image and write the name below it" is this one
+    // tool, not create+add-images+add-text; without these the lexical scorer
+    // never surfaced it (logged: the agent proposed pdf/add-images with no
+    // PDF to stamp onto).
+    keywords: const [
+      'create',
+      'image',
+      'photo',
+      'below',
+      'caption',
+      'label',
+      'insert',
+      'place',
+    ],
     params: const [
       ToolParam(
           key: 'caption',

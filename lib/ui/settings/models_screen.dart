@@ -5,6 +5,8 @@ import 'package:anvil/core/di.dart';
 import 'package:anvil/models/model_manager.dart';
 import 'package:anvil/ui/providers.dart';
 import 'package:anvil/ui/tokens.dart';
+import 'package:anvil/ui/widgets/llm_memory_panel.dart';
+import 'package:anvil/ui/widgets/model_gate.dart';
 import 'package:anvil/ui/widgets/slab.dart';
 
 /// Browsable model catalog: lists every curated model with its size and
@@ -52,6 +54,8 @@ class ModelsScreen extends ConsumerWidget {
                 style: text.bodyMedium!.copyWith(color: c.muted),
               ),
               const SizedBox(height: 18),
+              const LlmMemoryPanel(),
+              const SizedBox(height: 14),
               totalBytes.maybeWhen(
                 data: (b) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -112,7 +116,7 @@ class _ModelCatalogRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = Theme.of(context).extension<AnvilColors>()!;
-    final info = _taskInfo(model.taskId);
+    final info = modelTaskInfo(model.taskId);
     final v = model.variant;
     final downloading = download?.isDownloading ?? false;
     final failed = download?.error != null;
@@ -196,14 +200,3 @@ class _ModelCatalogRow extends ConsumerWidget {
   }
 }
 
-/// Display label + glyph for a model task id. Falls back to the raw id.
-({String label, IconData icon}) _taskInfo(String taskId) => switch (taskId) {
-      'image.upscale' => (label: 'Upscale image', icon: Icons.hd),
-      'image.colorize' => (label: 'Colorize', icon: Icons.palette_outlined),
-      'image.deblur' => (label: 'Deblur & sharpen', icon: Icons.deblur),
-      'image.inpaint' => (label: 'Object removal', icon: Icons.healing),
-      'asr.transcribe' => (label: 'Transcribe audio', icon: Icons.graphic_eq),
-      'agent.llm' => (label: 'Assistant (Gemma 4)', icon: Icons.smart_toy_outlined),
-      'agent.llm.qwen' => (label: 'Assistant (Qwen3)', icon: Icons.smart_toy_outlined),
-      _ => (label: taskId, icon: Icons.memory),
-    };

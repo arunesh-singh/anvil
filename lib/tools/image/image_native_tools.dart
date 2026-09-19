@@ -108,10 +108,13 @@ class _MultiImage extends BaseToolModule {
   EngineKind get engine => EngineKind.image;
 
   @override
+  String? fileSetError(List<InputFile> files) =>
+      files.length < 2 ? 'Select at least two images.' : null;
+
+  @override
   Stream<ToolProgress> run(ToolInput input) async* {
-    if (input.files.length < 2) {
-      throw const ToolException('Select at least two images.');
-    }
+    final reject = fileSetError(input.files);
+    if (reject != null) throw ToolException(reject);
     yield const ToolRunning(message: 'Reading images…');
     final images = [for (final f in input.files) await _readBytes(f)];
     yield const ToolRunning(fraction: 0.3, message: 'Processing…');
@@ -138,10 +141,14 @@ class _CompositeImage extends BaseToolModule {
   EngineKind get engine => EngineKind.image;
 
   @override
+  String? fileSetError(List<InputFile> files) => files.length < 2
+      ? 'Select a base image and at least one overlay.'
+      : null;
+
+  @override
   Stream<ToolProgress> run(ToolInput input) async* {
-    if (input.files.length < 2) {
-      throw const ToolException('Select a base image and at least one overlay.');
-    }
+    final reject = fileSetError(input.files);
+    if (reject != null) throw ToolException(reject);
     yield const ToolRunning(message: 'Reading images…');
     final bytes = [for (final f in input.files) await _readBytes(f)];
     final specs = (input.params['layers'] as List?) ?? const [];

@@ -56,11 +56,23 @@ flowchart LR
   V -->|valid| EX[Engine executor runs tool on-device]
   V -->|invalid| G
   EX -->|result| G
-  G -->|next step or done| OUT[Result + confirm]
+  G -->|next step or done| OUT[Result]
 ```
-- **Tier 3a:** map request → one tool + params. **Tier 3b:** 2–3 step chains (e.g. extract-audio → transcribe). Confirm step before executing a chain.
+- **Tier 3a:** map request → one tool + params. **Tier 3b:** 2–3 step chains (e.g. extract-audio → transcribe). Validated steps run automatically; Stop cancels a chain.
 - **Mandatory:** validate every tool-call's args against `fnSchema` before running — a 2B model hallucinates args. Never execute unvalidated.
 - No cloud planner, no open-ended autonomy.
+
+## The LLM slot: load state and unload
+`LlmEngine` holds exactly ONE model. Loading a `.litertlm` costs 1–4 GB of RAM and tens of seconds (weights map + GPU kernel build) with **no progress signal** from LiteRT-LM, so:
+- Every transition is broadcast on `LlmEngine.statusStream` (`unloaded | loading | loaded`, with the task id and a start timestamp). `llmStatusProvider` re-emits once a second while loading so the UI can show elapsed time.
+- Concurrent `ensureLoaded` calls **coalesce** (composer warm-up vs. Send): same configuration joins the in-flight load, a different one queues behind it. Two parallel native creates would be two multi-GB engines.
+- A turn flips `busy` and persists the user's message *before* the load, so a cold start never looks like a frozen screen.
+- `LlmEngine.unload()` (Settings → Models, or the Ask tab's model sheet) stops live generation, closes the conversations and frees the engine. It queues behind an in-flight load — tearing the engine down mid-create is a native crash.
+
+## Background execution
+Long jobs (an LLM turn, an ffmpeg transcode, a model download) must survive the user leaving the app. Android freezes cached processes and kills the biggest ones first, so `ForegroundKeepAlive` (`anvil/foreground` channel → `KeepAliveService`, type `dataSync`) holds the process in the foreground bucket with an ongoing notification for as long as a job is running.
+- Holds are per-owner and idempotent (`chat`, `tool`, `download`); the service stops when the last owner releases.
+- It protects the existing work; it does not move it. Nothing survives process death, and there is no resume — a killed turn restarts.
 
 ## What we reuse from Google AI Edge Gallery (Apache-2.0, Android/Kotlin)
 We port **patterns**, not code (Gallery is Kotlin; we're Dart):

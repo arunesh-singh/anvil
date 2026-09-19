@@ -239,7 +239,7 @@ void main() {
     }
   }, timeout: const Timeout(Duration(minutes: 45)));
 
-  testWidgets('agent block: a two-step chain reaches a confirm per step', (
+  testWidgets('agent block: a two-step chain yields a tool call per step', (
     tester,
   ) async {
     // The PLAN/D6 acceptance gate: "compress this PDF and convert to
@@ -281,8 +281,8 @@ void main() {
         step: 1,
       );
       final first = (await s1.start(request).toList()).last;
-      expect(first, isA<AgentNeedsConfirm>());
-      final step1 = (first as AgentNeedsConfirm).call;
+      expect(first, isA<AgentToolCall>());
+      final step1 = (first as AgentToolCall).call;
       expect(step1.tool.meta.qualifiedId, 'pdf/compress');
 
       final events = await step1.tool.run(step1.input).toList();
@@ -308,9 +308,9 @@ void main() {
       );
       final second =
           (await s2.start(continuationPrompt(request, [done])).toList()).last;
-      expect(second, isA<AgentNeedsConfirm>());
+      expect(second, isA<AgentToolCall>());
       expect(
-        (second as AgentNeedsConfirm).call.tool.meta.category,
+        (second as AgentToolCall).call.tool.meta.category,
         ToolCategory.image,
       );
       expect(second.step, 2);

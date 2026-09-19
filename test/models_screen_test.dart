@@ -65,7 +65,7 @@ void main() {
     // Friendly labels render for known task ids.
     expect(find.text('Upscale image'), findsOneWidget);
     expect(find.text('Object removal'), findsOneWidget);
-    expect(find.text('Writing & agent'), findsOneWidget);
+    expect(find.text('Gemma 4 E2B'), findsOneWidget);
 
     // Compatible + not cached -> a download affordance.
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);

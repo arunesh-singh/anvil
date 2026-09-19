@@ -1,18 +1,14 @@
-/// Widget tests for the unified Ask tab: the model gate disables Send, the D6
-/// confirm panel is the only path to execution, and the in-flight assistant
-/// bubble streams. No getIt, no engine — the notifier is faked and every
-/// watched provider overridden.
+/// Widget tests for the unified Ask tab: the model gate disables Send and the
+/// in-flight assistant bubble streams. No getIt, no engine — the notifier is
+/// faked and every watched provider overridden.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:anvil/agent/agent_session.dart';
-import 'package:anvil/agent/arg_validator.dart';
 import 'package:anvil/core/chat_repository.dart';
-import 'package:anvil/core/tool_io.dart';
-import 'package:anvil/core/tool_module.dart';
+import 'package:anvil/engines/llm_engine.dart';
 import 'package:anvil/models/model_manager.dart';
 import 'package:anvil/ui/agent/chat_controller.dart';
 import 'package:anvil/ui/agent/chat_screen.dart';
@@ -20,49 +16,26 @@ import 'package:anvil/ui/providers.dart';
 import 'package:anvil/ui/theme.dart';
 import 'package:anvil/ui/widgets/slab.dart';
 
-class _StubTool extends BaseToolModule {
-  @override
-  ToolMeta get meta => const ToolMeta(
-    id: 'grayscale',
-    category: ToolCategory.image,
-    label: 'Grayscale',
-    icon: Icons.filter_b_and_w,
-    description: 'Drop the colour.',
-    tinywowSlug: 'grayscale',
-    acceptedExtensions: ['png'],
-  );
-
-  @override
-  EngineKind get engine => EngineKind.image;
-
-  @override
-  Stream<ToolProgress> run(ToolInput input) async* {
-    yield const ToolSucceeded(ToolResult(files: []));
-  }
-}
-
-/// Seeds a state and records `confirm()` instead of running a tool. Overrides
-/// [build] so no getIt/repository is touched.
+/// Seeds a state without touching getIt/repositories.
 class _FakeChatNotifier extends ChatController {
   _FakeChatNotifier(this._initial);
   final ChatUiState _initial;
-  int confirms = 0;
 
   @override
   ChatUiState build() => _initial;
-
-  @override
-  Future<void> confirm() async => confirms++;
 }
 
 Widget _app(
   ModelStatus status, {
   ChatUiState? seed,
   _FakeChatNotifier? notifier,
+  LlmStatus? llm,
 }) => ProviderScope(
   overrides: [
-    modelStatusProvider('agent.llm').overrideWith((_) => Future.value(status)),
+    modelStatusProvider(ChatSession.defaultModelTaskId)
+        .overrideWith((_) => Future.value(status)),
     availableModelsProvider.overrideWith((_) => Future.value(const [])),
+    if (llm != null) llmStatusProvider.overrideWith((_) => Stream.value(llm)),
     if (notifier != null)
       chatProvider.overrideWith(() => notifier)
     else if (seed != null)
@@ -72,17 +45,6 @@ Widget _app(
     theme: darkTheme,
     home: const Scaffold(body: ChatScreen()),
   ),
-);
-
-AgentNeedsConfirm _pendingCall() => AgentNeedsConfirm(
-  ValidatedCall(
-    tool: _StubTool(),
-    input: const ToolInput(
-      files: [InputFile(path: '/tmp/shot.png', name: 'shot.png')],
-      params: {'quality': 80},
-    ),
-  ),
-  1,
 );
 
 void main() {
@@ -112,23 +74,6 @@ void main() {
       find.widgetWithText(PrimaryButton, 'Send'),
     );
     expect(send.onPressed, isNotNull);
-  });
-
-  testWidgets('a pending step shows the confirm gate and Run invokes confirm', (
-    tester,
-  ) async {
-    final notifier = _FakeChatNotifier(ChatUiState(pending: _pendingCall()));
-    await tester.pumpWidget(_app(ModelStatus.cached, notifier: notifier));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Run this step?'), findsOneWidget);
-    expect(find.text('Grayscale'), findsOneWidget);
-    expect(find.text('shot.png'), findsOneWidget);
-    expect(find.text('quality: 80'), findsOneWidget);
-
-    await tester.tap(find.widgetWithText(PrimaryButton, 'Run'));
-    await tester.pump();
-    expect(notifier.confirms, 1);
   });
 
   testWidgets(
@@ -189,5 +134,28 @@ void main() {
 
     expect(find.text('Converting page 1'), findsOneWidget);
     expect(find.widgetWithText(SecondaryButton, 'Stop'), findsOneWidget);
+  });
+
+  testWidgets('a loading model is named in the bubble, not called thinking', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        ModelStatus.cached,
+        seed: const ChatUiState(busy: true),
+        llm: LlmStatus(
+          LlmPhase.loading,
+          taskId: 'agent.llm',
+          since: DateTime.now().subtract(const Duration(seconds: 7)),
+        ),
+      ),
+    );
+    // Spinner animates forever — pump, don't settle.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.textContaining('Loading Gemma 4 E2B'), findsOneWidget);
+    expect(find.textContaining('7s'), findsOneWidget);
+    expect(find.text('Thinking\u2026'), findsNothing);
   });
 }

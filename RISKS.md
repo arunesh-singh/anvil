@@ -4,7 +4,7 @@
 |---|---|---|---|
 | R1 | **FFmpegKit retired** (Jan 2025); relying on a community fork (`sk3llo`) | High | Isolate behind `ffmpeg` engine executor (one file). D4: no fallback v1, but the interface makes a later platform-channel (MediaCodec/AVFoundation) swap cheap. Pin exact fork version |
 | R2 | **Codec patent exposure** post-MPEG-LA/Via-LA | Med | Use LGPL build; avoid bundling patent-encumbered encoders you don't ship; prefer royalty-free (VP9/Opus/WebP/AV1) |
-| R3 | **Small-LLM tool-calling unreliable** (FunctionGemma ≈58%) | High (Phase 3) | Primary = Gemma 4 E2B (native function calling); mandatory arg-validation against `fnSchema`; cap at guided chains (3b), confirm before execute. Never run unvalidated calls |
+| R3 | **Small-LLM tool-calling unreliable** (FunctionGemma ≈58%) | High (Phase 3) | Primary = Gemma 4 E2B (native function calling); mandatory arg-validation against `fnSchema`; cap at guided chains (3b); the validator is the gate before execute (steps auto-run). Never run unvalidated calls |
 | R4 | **Model size vs APK / storage** | Med | On-demand download (Phase 2), not bundled; LRU cache + storage manager; variant by device |
 | R5 | **Device floor** — old/low-RAM Android can't run ONNX/Gemma | Med | Device gating (RAM/accelerator); disable with clear message; deterministic tools still work everywhere |
 | R6 | **flutter_gemma setup friction** (master channel, native-assets, iOS Podfile) | Med | Pin Flutter version; document build steps; gate Phase 3 behind a stable integration spike before committing |

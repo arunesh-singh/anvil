@@ -82,6 +82,12 @@ ValidatedCall validateCall(
       }
       files.add(InputFile(path: path, name: path.split('/').last));
     }
+    final setError = tool.fileSetError(files);
+    if (setError != null) {
+      throw InvalidCallException(
+          '${meta.qualifiedId} cannot run on '
+          '${files.map((f) => f.name).join(', ')}: $setError');
+    }
   }
 
   // Params: coerce + type-check against the declared ToolParams.

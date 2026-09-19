@@ -244,6 +244,38 @@ void main() {
       }, fileExists: _always);
       expect(ok.input.params['q'], 50);
     });
+
+    test('a tool needing a PDF + an image rejects a lone image', () {
+      // Logged failure: the agent called pdf_add_images with only a photo,
+      // the call validated, the user confirmed, and the run then died on
+      // "Select one PDF and one PNG/JPG image."
+      final addImages = buildTools()
+          .firstWhere((t) => t.meta.qualifiedId == 'pdf/add-images');
+      expect(
+        () => validateCall(
+          addImages,
+          {
+            'files': ['/cache/IMG-0004.jpg'],
+          },
+          fileExists: _always,
+        ),
+        throwsA(
+          isA<InvalidCallException>().having(
+            (e) => e.message,
+            'message',
+            contains('one PDF and one PNG/JPG image'),
+          ),
+        ),
+      );
+      final ok = validateCall(
+        addImages,
+        {
+          'files': ['/cache/doc.pdf', '/cache/IMG-0004.jpg'],
+        },
+        fileExists: _always,
+      );
+      expect(ok.input.files.length, 2);
+    });
   });
 
   group('fnSchemaFor', () {
@@ -425,7 +457,7 @@ void main() {
         'let me compress it',
       );
       expect(events.whereType<AgentText>().single.text, 'Compressing');
-      expect(events.last, isA<AgentNeedsConfirm>());
+      expect(events.last, isA<AgentToolCall>());
     });
 
     test('a single valid call awaits confirmation', () async {
@@ -440,7 +472,7 @@ void main() {
       ).start('compress this pdf').toList();
 
       expect(chat.sent.single, 'compress this pdf');
-      final confirm = events.last as AgentNeedsConfirm;
+      final confirm = events.last as AgentToolCall;
       expect(confirm.step, 1);
       expect(confirm.call.tool.meta.qualifiedId, 'pdf/compress');
       expect(confirm.call.input.files.single.path, '/in.pdf');
@@ -466,7 +498,7 @@ void main() {
         chat.toolResults.single.$2['error'],
         contains("Unknown function 'shrink_pdf'"),
       );
-      expect(events.last, isA<AgentNeedsConfirm>());
+      expect(events.last, isA<AgentToolCall>());
     });
 
     test('exhausting the repair budget gives up instead of running', () async {
@@ -519,7 +551,7 @@ void main() {
       ]);
       final events = await session(const [], out: chat).start('go').toList();
       expect(chat.sent, hasLength(2));
-      expect(events.last, isA<AgentNeedsConfirm>());
+      expect(events.last, isA<AgentToolCall>());
     });
 
     // Gemma 4 E2B emits the OpenAI `tool_calls` shape, which flutter_gemma's
@@ -532,7 +564,7 @@ void main() {
       final events = await session([
         const [LlmTurnDone(leaked)],
       ]).start('compress this pdf').toList();
-      final confirm = events.last as AgentNeedsConfirm;
+      final confirm = events.last as AgentToolCall;
       expect(confirm.call.tool.meta.qualifiedId, 'pdf/compress');
       expect(confirm.call.input.files.single.path, '/in.pdf');
     });
@@ -544,7 +576,7 @@ void main() {
       final events = await session([
         const [LlmTurnDone(leaked)],
       ]).start('compress this pdf').toList();
-      final confirm = events.last as AgentNeedsConfirm;
+      final confirm = events.last as AgentToolCall;
       expect(confirm.call.input.files.single.path, '/in.pdf');
     });
 
@@ -556,7 +588,7 @@ void main() {
         const [LlmTurnDone(leaked)],
       ]).start('grayscale this').toList();
       expect(
-        (events.last as AgentNeedsConfirm).call.tool.meta.qualifiedId,
+        (events.last as AgentToolCall).call.tool.meta.qualifiedId,
         'image/grayscale',
       );
     });
@@ -585,7 +617,7 @@ void main() {
         fileExists: _always,
       );
       final events = await s.start('compress it').toList();
-      expect((events.last as AgentNeedsConfirm).call.input.files.single.path,
+      expect((events.last as AgentToolCall).call.input.files.single.path,
           '/in.pdf');
       // Filled deterministically — no repair round-trip.
       expect(chat.toolResults, isEmpty);
@@ -599,12 +631,12 @@ void main() {
       ]);
       final s = session(const [], out: chat);
       final first = await s.start('go').toList();
-      expect((first.last as AgentNeedsConfirm).call.tool.meta.qualifiedId,
+      expect((first.last as AgentToolCall).call.tool.meta.qualifiedId,
           'pdf/compress');
       final recovered = await s
           .continueAfterToolError(toolName: 'pdf_compress', error: 'boom')
           .toList();
-      expect((recovered.last as AgentNeedsConfirm).call.tool.meta.qualifiedId,
+      expect((recovered.last as AgentToolCall).call.tool.meta.qualifiedId,
           'image/grayscale');
       expect(chat.toolResults, hasLength(1));
       expect(chat.toolResults.single.$1, 'pdf_compress');

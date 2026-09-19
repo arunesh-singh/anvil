@@ -136,6 +136,17 @@ abstract interface class ToolModule {
 
   /// Runs the tool, streaming progress then exactly one [ToolSucceeded].
   Stream<ToolProgress> run(ToolInput input);
+
+  /// Rejects an input file *set* the tool cannot run on (e.g. `pdf/add-images`
+  /// needs one PDF plus one image, `pdf/merge` needs two files) as a
+  /// user-facing message, or null when the set is usable.
+  ///
+  /// Extension-level checks live in [ToolMeta.acceptedExtensions]; this covers
+  /// combinations they cannot express. The Phase-3 validator calls it BEFORE
+  /// the confirm step, so the model repairs its call instead of the user
+  /// confirming a step that is bound to fail (logged: `pdf/add-images` run
+  /// with only a photo attached).
+  String? fileSetError(List<InputFile> files);
 }
 
 /// Convenience base supplying the inert Phase-0 defaults so concrete tools only
@@ -149,4 +160,7 @@ abstract class BaseToolModule implements ToolModule {
 
   @override
   Future<void> ensureReady() async {}
+
+  @override
+  String? fileSetError(List<InputFile> files) => null;
 }

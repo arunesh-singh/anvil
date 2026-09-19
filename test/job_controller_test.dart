@@ -1,4 +1,5 @@
 import 'package:anvil/core/di.dart';
+import 'package:anvil/core/foreground_task.dart';
 import 'package:anvil/core/history_repository.dart';
 import 'package:anvil/core/tool_io.dart';
 import 'package:anvil/core/tool_module.dart';
@@ -68,7 +69,10 @@ void main() {
   setUp(() async {
     history = _FakeHistoryRepo();
     await getIt.reset();
-    getIt.registerSingleton<HistoryRepository>(history);
+    getIt
+      ..registerSingleton<HistoryRepository>(history)
+      ..registerSingleton<ForegroundKeepAlive>(
+          ForegroundKeepAlive(supported: false));
   });
 
   tearDown(() async => getIt.reset());

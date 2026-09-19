@@ -14,6 +14,7 @@ import 'package:anvil/core/database.dart';
 import 'package:anvil/core/chat_repository.dart';
 import 'package:anvil/core/export_service.dart';
 import 'package:anvil/core/file_service.dart';
+import 'package:anvil/core/foreground_task.dart';
 import 'package:anvil/core/history_repository.dart';
 import 'package:anvil/core/log_repository.dart';
 import 'package:anvil/core/registry.dart';
@@ -68,6 +69,7 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<FileService>(FileService.new)
     ..registerLazySingleton<ShareService>(ShareService.new)
     ..registerLazySingleton<ExportService>(ExportService.new)
+    ..registerLazySingleton<ForegroundKeepAlive>(ForegroundKeepAlive.new)
     ..registerLazySingleton<PdfEngine>(PdfEngine.new)
     ..registerLazySingleton<ImageEngine>(ImageEngine.new)
     ..registerLazySingleton<FfmpegEngine>(FfmpegEngine.new)

@@ -9,5 +9,6 @@ class MainActivity : FlutterActivity() {
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         ImageChannel.register(this, messenger)
         PdfChannel.register(this, messenger)
+        ForegroundChannel.register(this, messenger)
     }
 }

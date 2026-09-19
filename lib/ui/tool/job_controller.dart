@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:anvil/core/app_log.dart';
 import 'package:anvil/core/di.dart';
+import 'package:anvil/core/foreground_task.dart';
 import 'package:anvil/core/history_repository.dart';
 import 'package:anvil/core/tool_io.dart';
 import 'package:anvil/core/tool_module.dart';
@@ -46,7 +47,10 @@ class JobNotifier extends Notifier<JobState> {
 
   @override
   JobState build() {
-    ref.onDispose(() => _sub?.cancel());
+    ref.onDispose(() {
+      _sub?.cancel();
+      _release();
+    });
     return const JobIdle();
   }
 
@@ -55,6 +59,8 @@ class JobNotifier extends Notifier<JobState> {
     state = const JobRunning(message: 'Starting…');
     final id = tool.meta.qualifiedId;
     logAction(logSourceTool, 'Run $id', detail: _inputDetail(input));
+    // Long transcodes/upscales must survive the user switching apps.
+    await keepAliveHold(keepAliveTool, tool.meta.label);
     // Phase-2 hook: ML tools download/verify their model on first use.
     if (tool.model != null) {
       state = const JobRunning(message: 'Preparing model…');
@@ -69,6 +75,7 @@ class JobNotifier extends Notifier<JobState> {
         logError(logSourceTool, '$id could not prepare its model',
             error: e, stack: s);
         state = JobFailed(message);
+        await _release();
         return;
       }
     }
@@ -90,9 +97,11 @@ class JobNotifier extends Notifier<JobState> {
                 createdAt: DateTime.now(),
               ),
             );
+            _release();
           case ToolFailed(:final message):
             logError(logSourceTool, '$id failed', detail: message);
             state = JobFailed(message);
+            _release();
         }
       },
       onError: (Object e, StackTrace s) {
@@ -100,10 +109,15 @@ class JobNotifier extends Notifier<JobState> {
         state = JobFailed(
           e is ToolException ? e.message : 'Something went wrong: $e',
         );
+        _release();
       },
       cancelOnError: true,
     );
   }
+
+  /// Drops this run's claim on the process; the service stops when no other
+  /// subsystem (a chat turn, a download) is still holding one.
+  Future<void> _release() => keepAliveRelease(keepAliveTool);
 
   /// Cancels the stream subscription and discards any pending result.
   ///
@@ -116,6 +130,7 @@ class JobNotifier extends Notifier<JobState> {
     _sub = null;
     logWarning(logSourceTool, 'Run stopped by the user');
     state = const JobCancelled();
+    _release();
   }
 }
 

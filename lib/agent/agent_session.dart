@@ -1,7 +1,8 @@
-/// The Phase-3 tool-call loop (D6): the model picks ONE tool per turn, every
-/// call is validated against the tool's own schema before anything runs, and
-/// the user confirms each step. The controller drives the chain (one session
-/// per step); guided chains only — no autonomy, no cloud planner.
+/// The Phase-3 tool-call loop: the model picks ONE tool per turn and every
+/// call is validated against the tool's own schema before it runs. Validated
+/// steps execute immediately — the controller drives the chain (one session
+/// per step) and the user stops it with Stop; guided chains only — bounded
+/// step count, no cloud planner.
 ///
 /// Drives the plugin-free [LlmChat] seam, so it is fully host-testable.
 library;
@@ -47,13 +48,15 @@ class AgentText extends AgentEvent {
   const AgentText(this.text);
 }
 
-/// A validated call awaiting the user's confirm (D6: never auto-execute).
-class AgentNeedsConfirm extends AgentEvent {
+/// A validated call, ready to run. The controller executes it as soon as it
+/// arrives — the model picks the tool, the validator vets the args, and the
+/// user watches it happen (Stop cancels a running chain).
+class AgentToolCall extends AgentEvent {
   final ValidatedCall call;
 
   /// 1-based position in the chain.
   final int step;
-  const AgentNeedsConfirm(this.call, this.step);
+  const AgentToolCall(this.call, this.step);
 }
 
 class AgentDone extends AgentEvent {
@@ -175,7 +178,7 @@ class AgentSession {
     } else {
       try {
         final filled = fillFileArgs(tool, args, availableFiles);
-        yield AgentNeedsConfirm(
+        yield AgentToolCall(
           validateCall(tool, filled, fileExists: fileExists),
           step,
         );

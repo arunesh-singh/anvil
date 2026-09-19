@@ -9,7 +9,7 @@ Confirmed with product owner on 2026-06-20. **These are settled — execute agai
 | D3 | PDF engine | **`pdfrx` + native (free)**, NOT Syncfusion | Avoid commercial license / revenue cap. More work, no licensing strings |
 | D4 | FFmpeg | **`sk3llo/ffmpeg_kit_flutter` LGPL fork; NO platform-channel fallback for v1** | Accept the dependency risk for now; isolate behind engine interface so a fallback can be added later if the fork dies |
 | D5 | Cloud | **None in v1.** Everything on-device | No backend, no opex, no privacy compromise. Cloud-only tools are deferred |
-| D6 | Agent (Phase 3) | **On-device Gemma 4 E2B, basic function calling, guided chains only.** No cloud planner | Tier 3a (NL→single tool) + 3b (2–3 step chains). No full autonomy (3c). Small-model arg-validation mandatory |
+| D6 | Agent (Phase 3) | **On-device Gemma 4 E2B, basic function calling, guided chains only.** No cloud planner. **Validated steps auto-execute** (amended 2026-09-19) | Tier 3a (NL→single tool) + 3b (2–3 step chains). No full autonomy (3c). Small-model arg-validation mandatory; the validator (not a confirm tap) is the gate, Stop cancels a running chain |
 | D7 | Project location | `/Volumes/Arunesh/projects/anvil` | Codename "Anvil"; planning docs live here for omp/Claude handoff |
 
 ## Scope consequences

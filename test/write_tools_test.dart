@@ -44,9 +44,24 @@ class _FakeLlmEngine implements LlmEngine {
   Future<void> ensureLoaded(String modelPath,
       {bool supportImage = false,
       ModelFamily family = ModelFamily.gemma4,
-      int maxTokens = 4096}) async {
+      int maxTokens = 4096,
+      String? taskId}) async {
     loadedPath = modelPath;
   }
+
+  @override
+  Future<void> unload() async {
+    loadedPath = null;
+  }
+
+  @override
+  String? get loadedTaskId => null;
+
+  @override
+  LlmStatus get status => const LlmStatus(LlmPhase.unloaded);
+
+  @override
+  Stream<LlmStatus> get statusStream => const Stream.empty();
 
   @override
   Future<String> generate(String p) async {
@@ -66,9 +81,6 @@ class _FakeLlmEngine implements LlmEngine {
     ModelFamily family = ModelFamily.gemma4,
   }) async =>
       throw UnimplementedError();
-
-  @override
-  Future<void> dispose() async {}
 }
 
 class _FakeModelManager implements ModelManager {

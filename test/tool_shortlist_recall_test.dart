@@ -45,6 +45,15 @@ const _corpus = <_Row>[
   _Row('pixelate the faces in this picture', {'jpg'}, {'image/pixelate'}),
   _Row('add a border around this photo', {'jpg'}, {'image/border'}),
   _Row('colorize this old photo', {'jpg'}, {'image/colorize-photo'}),
+  // Logged: the shortlist offered add-images/add-text but never the one tool
+  // that makes a PDF *from* a photo, so the agent proposed stamping onto a
+  // PDF the user never attached.
+  _Row(
+    'create a pdf with the image and write the item name below the image '
+        'in the pdf',
+    {'jpg'},
+    {'pdf/photo-caption'},
+  ),
   _Row('turn this video into a gif', {'mp4'}, {'video/to-gif'}),
   _Row('remove the sound from this video', {'mp4'}, {'video/mute'}),
   _Row('extract the audio from this video', {'mp4'}, {'video/extract-audio'}),

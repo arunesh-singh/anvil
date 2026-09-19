@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 
 import 'package:anvil/core/app_log.dart';
 import 'package:anvil/core/di.dart';
+import 'package:anvil/core/foreground_task.dart';
 import 'package:anvil/core/history_repository.dart';
 import 'package:anvil/core/chat_repository.dart';
 import 'package:anvil/core/log_repository.dart';
@@ -11,6 +14,7 @@ import 'package:anvil/core/registry.dart';
 import 'package:anvil/core/settings_repository.dart';
 import 'package:anvil/core/tool_io.dart';
 import 'package:anvil/core/tool_module.dart';
+import 'package:anvil/engines/llm_engine.dart';
 import 'package:anvil/models/model_cache.dart';
 import 'package:anvil/models/model_manager.dart';
 
@@ -126,6 +130,46 @@ final modelStatusProvider = FutureProvider.family<ModelStatus, String>(
   (ref, taskId) => getIt<ModelManager>().status(taskId),
 );
 
+/// The LLM slot's load state (unloaded / loading / loaded), so any screen can
+/// show that a multi-GB model is coming up instead of appearing frozen.
+/// Seeded with the engine's current status so a late listener is never blank,
+/// and re-emitted once a second while loading — the native load reports no
+/// progress, so elapsed time is the only honest signal. Each tick is a fresh
+/// object so riverpod's identity check propagates it.
+final llmStatusProvider = StreamProvider<LlmStatus>((ref) {
+  // Widget tests mount screens without a locator; an absent engine is simply
+  // an empty slot, not an error.
+  final engine =
+      getIt.isRegistered<LlmEngine>() ? getIt<LlmEngine>() : null;
+  if (engine == null) {
+    return Stream.value(const LlmStatus(LlmPhase.unloaded));
+  }
+  final out = StreamController<LlmStatus>();
+  Timer? tick;
+  void push(LlmStatus s) {
+    if (out.isClosed) return;
+    out.add(s);
+    tick?.cancel();
+    tick = s.isLoading
+        ? Timer.periodic(
+            const Duration(seconds: 1),
+            (_) => out.isClosed
+                ? null
+                : out.add(LlmStatus(s.phase, taskId: s.taskId, since: s.since)),
+          )
+        : null;
+  }
+
+  push(engine.status);
+  final sub = engine.statusStream.listen(push);
+  ref.onDispose(() {
+    tick?.cancel();
+    sub.cancel();
+    out.close();
+  });
+  return out.stream;
+});
+
 /// The app log, newest first. Invalidate after clearing or to refresh.
 final logEntriesProvider = FutureProvider<List<LogEntry>>(
   (_) => getIt<LogRepository>().recent(),
@@ -156,6 +200,8 @@ class ModelDownloadsNotifier extends Notifier<Map<String, ModelDownloadState>> {
   Future<void> download(String taskId) async {
     if (state[taskId]?.isDownloading ?? false) return;
     state = {...state, taskId: const ModelDownloadState(fraction: 0)};
+    // A multi-GB download must survive the user switching apps.
+    await keepAliveHold(keepAliveDownload, 'Downloading a model');
     logAction(logSourceModel, 'Downloading model $taskId');
     try {
       await getIt<ModelManager>().ensureReady(
@@ -170,6 +216,7 @@ class ModelDownloadsNotifier extends Notifier<Map<String, ModelDownloadState>> {
         },
       );
       state = {...state}..remove(taskId);
+      await keepAliveRelease(keepAliveDownload);
       logAction(logSourceModel, 'Model $taskId ready on this device');
       ref.invalidate(availableModelsProvider);
       ref.invalidate(cachedModelsProvider);
@@ -178,6 +225,7 @@ class ModelDownloadsNotifier extends Notifier<Map<String, ModelDownloadState>> {
     } catch (e, s) {
       logError(logSourceModel, 'Model $taskId download failed',
           error: e, stack: s);
+      await keepAliveRelease(keepAliveDownload);
       state = {...state, taskId: ModelDownloadState(error: e.toString())};
     }
   }

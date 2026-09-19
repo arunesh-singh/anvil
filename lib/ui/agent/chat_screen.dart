@@ -1,16 +1,15 @@
 /// Ask-tab content: a persistent multi-session chat driven by the on-device
 /// assistant. Scaffold-less — the [AppShell] owns the Scaffold and bottom nav.
 ///
-/// Assistant text and its `<think>` scratchpad stream in live; every tool step
-/// the model proposes lands in a confirm panel first (D6) — nothing runs until
-/// the user taps Run.
+/// Assistant text and its `<think>` scratchpad stream in live; each tool step
+/// the model picks runs automatically and reports its result inline — Stop
+/// cancels a chain mid-flight.
 library;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:anvil/agent/agent_session.dart';
 import 'package:anvil/core/chat_repository.dart';
 import 'package:anvil/core/di.dart';
 import 'package:anvil/core/export_service.dart';
@@ -20,6 +19,7 @@ import 'package:anvil/models/model_manager.dart';
 import 'package:anvil/ui/agent/chat_controller.dart';
 import 'package:anvil/ui/providers.dart';
 import 'package:anvil/ui/tokens.dart';
+import 'package:anvil/ui/widgets/llm_memory_panel.dart';
 import 'package:anvil/ui/widgets/model_gate.dart';
 import 'package:anvil/ui/widgets/slab.dart';
 
@@ -97,12 +97,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ..add(_streamingBubble(context, c, state));
     }
 
-    if (state.pending != null) {
-      children
-        ..add(const SizedBox(height: 18))
-        ..add(_confirmPanel(context, theme, state.pending!));
-    }
-
     if (state.attachments.isNotEmpty) {
       children
         ..add(const SizedBox(height: 18))
@@ -113,6 +107,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       children
         ..add(const SizedBox(height: 18))
         ..add(gate);
+    }
+
+    // A composer-focus warm-up loads the model with no turn in flight: say so,
+    // otherwise Send just looks dead for half a minute.
+    final llm = ref.watch(llmStatusProvider).asData?.value;
+    if (!state.busy && llm != null && llm.isLoading) {
+      children
+        ..add(const SizedBox(height: 18))
+        ..add(const LlmMemoryPanel());
     }
 
     children
@@ -324,6 +327,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       taskId,
                       onChanged: disabled ? null : notifier.setModel,
                     ),
+                    const SizedBox(height: 12),
+                    const LlmMemoryPanel(),
                     const SizedBox(height: 20),
                     const SectionEyebrow('INFERENCE', icon: Icons.tune),
                     const SizedBox(height: 12),
@@ -404,7 +409,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       decoration: const InputDecoration(labelText: 'Chat model'),
       items: [
         for (final id in ids)
-          DropdownMenuItem(value: id, child: Text(_modelLabel(id))),
+          DropdownMenuItem(value: id, child: Text(modelTaskLabel(id))),
       ],
       onChanged: onChanged == null
           ? null
@@ -556,10 +561,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ChatUiState state,
   ) {
     // A running tool step (stepProgress) takes priority; otherwise, before the
-    // first token, a spinner + "Thinking…".
+    // first token, a spinner over the phase we are actually in — loading a
+    // multi-GB model is not "thinking", and it is the slow one.
     final progress = state.stepProgress;
     if (progress != null ||
         (state.streamingText.isEmpty && state.streamingThinking.isEmpty)) {
+      final llm = ref.watch(llmStatusProvider).asData?.value;
+      final String message;
+      if (progress != null) {
+        message = progress;
+      } else if (llm != null && llm.isLoading) {
+        final since = llm.since;
+        final secs =
+            since == null ? 0 : DateTime.now().difference(since).inSeconds;
+        final label =
+            llm.taskId == null ? 'the model' : modelTaskLabel(llm.taskId!);
+        message = 'Loading $label\u2026 ${secs}s';
+      } else if (llm != null && !llm.isLoaded) {
+        message = 'Preparing the model\u2026';
+      } else {
+        message = 'Thinking\u2026';
+      }
       return SlabPanel(
         child: Row(
           children: [
@@ -569,7 +591,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: CircularProgressIndicator(strokeWidth: 2.4),
             ),
             const SizedBox(width: 14),
-            Expanded(child: Text(progress ?? 'Thinking\u2026')),
+            Expanded(child: Text(message)),
             _stopButton(),
           ],
         ),
@@ -663,57 +685,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
     );
   }
-
-  // --- Confirm gate -------------------------------------------------------
-
-  Widget _confirmPanel(
-    BuildContext context,
-    ThemeData theme,
-    AgentNeedsConfirm view,
-  ) {
-    final c = theme.extension<AnvilColors>()!;
-    final call = view.call;
-    return SlabPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Run this step?', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 10),
-          Text(call.tool.meta.label, style: theme.textTheme.bodyLarge),
-          for (final f in call.input.files) ...[
-            const SizedBox(height: 4),
-            Text(f.name, style: AnvilText.mono(13, color: c.muted)),
-            Text(f.path, style: AnvilText.mono(11, color: c.muted)),
-          ],
-          for (final e in call.input.params.entries) ...[
-            const SizedBox(height: 4),
-            Text(
-              '${e.key}: ${e.value}',
-              style: AnvilText.mono(13, color: c.muted),
-            ),
-          ],
-          const SizedBox(height: 16),
-          PrimaryButton(
-            label: 'Run',
-            icon: Icons.arrow_forward,
-            onPressed: () => ref.read(chatProvider.notifier).confirm(),
-          ),
-          const SizedBox(height: 8),
-          SecondaryButton(
-            label: 'Cancel',
-            onPressed: () => ref.read(chatProvider.notifier).reject(),
-          ),
-        ],
-      ),
-    );
-  }
 }
-
-String _modelLabel(String taskId) => switch (taskId) {
-  'agent.llm.qwen' => 'Qwen3 (4B / 1.7B)',
-  'agent.llm' => 'Gemma 4 E2B',
-  _ => taskId,
-};
 
 String _relativeTime(DateTime t) {
   final d = DateTime.now().difference(t);

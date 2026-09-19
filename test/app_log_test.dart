@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:anvil/core/app_log.dart';
 import 'package:anvil/core/di.dart';
+import 'package:anvil/core/foreground_task.dart';
 import 'package:anvil/core/history_repository.dart';
 import 'package:anvil/core/log_repository.dart';
 import 'package:anvil/core/tool_io.dart';
@@ -99,7 +100,9 @@ void main() {
     getIt
       ..registerSingleton<LogRepository>(repo)
       ..registerSingleton<AppLog>(log)
-      ..registerSingleton<HistoryRepository>(_FakeHistoryRepo());
+      ..registerSingleton<HistoryRepository>(_FakeHistoryRepo())
+      ..registerSingleton<ForegroundKeepAlive>(
+          ForegroundKeepAlive(supported: false));
   });
 
   tearDown(() async => getIt.reset());

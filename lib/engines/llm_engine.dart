@@ -3,8 +3,14 @@
 /// `.litertlm` bundle) is delivered/verified by [ModelManager]; this engine
 /// installs it into the plugin and serves one-shot generations (write tools)
 /// and function-calling chats (the agent, through the plugin-free [LlmChat]).
+///
+/// The slot holds ONE model. Every transition of that slot is broadcast on
+/// [LlmEngine.statusStream] so the UI can show "loading Gemma 4 E2B…" instead
+/// of sitting silent for the ~10–40 s a multi-GB `.litertlm` takes to map and
+/// build its GPU kernels, and offer [LlmEngine.unload] to hand that RAM back.
 library;
 
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_gemma/flutter_gemma.dart' as gemma;
@@ -13,6 +19,23 @@ import 'package:anvil/core/tool_io.dart';
 import 'package:anvil/engines/llm_chat.dart';
 import 'package:anvil/models/manifest.dart';
 
+/// Lifecycle of the engine's single in-memory model slot.
+enum LlmPhase { unloaded, loading, loaded }
+
+/// Snapshot of the model slot. [taskId] is the manifest task of the model
+/// being loaded (or loaded); [since] is when the phase began, so the UI can
+/// tick an elapsed counter over an otherwise progress-less native load.
+class LlmStatus {
+  final LlmPhase phase;
+  final String? taskId;
+  final DateTime? since;
+
+  const LlmStatus(this.phase, {this.taskId, this.since});
+
+  bool get isLoading => phase == LlmPhase.loading;
+  bool get isLoaded => phase == LlmPhase.loaded;
+}
+
 class LlmEngine {
   /// The KV budget (prompt + output) of the currently loaded model; mirrors
   /// createModel's maxTokens. Callers read [contextTokens] to size prompts.
@@ -20,10 +43,35 @@ class LlmEngine {
   int get contextTokens => _activeMaxTokens;
 
   gemma.InferenceModel? _model;
-  String? _loadedPath;
-  bool _loadedSupportImage = false;
-  ModelFamily? _loadedFamily;
-  int? _loadedMaxTokens;
+  String? _loadedKey;
+  String? _loadedTaskId;
+
+  /// Live conversations/sessions handed out for the loaded model. Tracked so
+  /// [unload] can stop native decoding before the model is closed — freeing
+  /// the engine out from under a generating conversation is a native crash.
+  final Set<_GemmaLlmChat> _chats = {};
+  final Set<gemma.InferenceModelSession> _sessions = {};
+
+  /// Serializes load/unload: the native create runs on a spawned isolate, so
+  /// two concurrent `ensureLoaded`s (composer warm-up + Send) would otherwise
+  /// both see an empty slot and build two multi-GB engines.
+  Future<void>? _inflight;
+  String? _inflightKey;
+
+  LlmStatus _status = const LlmStatus(LlmPhase.unloaded);
+  final StreamController<LlmStatus> _statusCtl =
+      StreamController<LlmStatus>.broadcast();
+
+  /// Current slot state; pair with [statusStream] for updates.
+  LlmStatus get status => _status;
+
+  /// Slot transitions (loading → loaded → unloaded). Broadcast, never closed.
+  Stream<LlmStatus> get statusStream => _statusCtl.stream;
+
+  void _emit(LlmStatus s) {
+    _status = s;
+    if (!_statusCtl.isClosed) _statusCtl.add(s);
+  }
 
   /// Maps a manifest [ModelFamily] onto the plugin's `ModelType`.
   gemma.ModelType _gemmaType(ModelFamily f) => switch (f) {
@@ -31,21 +79,42 @@ class LlmEngine {
     ModelFamily.qwen3 => gemma.ModelType.qwen3,
   };
 
+  String _keyOf(String path, bool supportImage, ModelFamily family, int max) =>
+      '$path|$supportImage|${family.name}|$max';
+
   /// Loads the model at [modelPath] once; subsequent calls are no-ops until
-  /// the path changes (manifest version bump).
+  /// the path (or a load parameter) changes. Concurrent calls coalesce: the
+  /// same configuration joins the in-flight load, a different one queues
+  /// behind it. [taskId] is carried into [status] for the UI label only.
   Future<void> ensureLoaded(String modelPath,
       {bool supportImage = false,
       ModelFamily family = ModelFamily.gemma4,
-      int maxTokens = 4096}) async {
-    if (_model != null &&
-        _loadedPath == modelPath &&
-        _loadedSupportImage == supportImage &&
-        _loadedFamily == family &&
-        _loadedMaxTokens == maxTokens) {
-      return;
-    }
-    await _model?.close();
-    _model = null;
+      int maxTokens = 4096,
+      String? taskId}) {
+    final key = _keyOf(modelPath, supportImage, family, maxTokens);
+    if (_model != null && _loadedKey == key) return Future<void>.value();
+    final inflight = _inflight;
+    if (inflight != null && _inflightKey == key) return inflight;
+    final future =
+        (inflight == null ? Future<void>.value() : inflight.catchError((_) {}))
+            .then((_) => _load(modelPath, key, supportImage, family, maxTokens,
+                taskId));
+    _inflight = future;
+    _inflightKey = key;
+    return future.whenComplete(() {
+      if (identical(_inflight, future)) {
+        _inflight = null;
+        _inflightKey = null;
+      }
+    });
+  }
+
+  Future<void> _load(String modelPath, String key, bool supportImage,
+      ModelFamily family, int maxTokens, String? taskId) async {
+    // Re-check: a queued load may have been satisfied by the one ahead of it.
+    if (_model != null && _loadedKey == key) return;
+    _emit(LlmStatus(LlmPhase.loading, taskId: taskId, since: DateTime.now()));
+    await _releaseModel();
     final modelType = _gemmaType(family);
     try {
       await gemma.FlutterGemma.installModel(
@@ -71,11 +140,11 @@ class LlmEngine {
         enableSpeculativeDecoding: family == ModelFamily.gemma4 ? true : null,
       );
       _activeMaxTokens = maxTokens;
-      _loadedPath = modelPath;
-      _loadedSupportImage = supportImage;
-      _loadedFamily = family;
-      _loadedMaxTokens = maxTokens;
+      _loadedKey = key;
+      _loadedTaskId = taskId;
+      _emit(LlmStatus(LlmPhase.loaded, taskId: taskId, since: DateTime.now()));
     } catch (e) {
+      _emit(const LlmStatus(LlmPhase.unloaded));
       throw ToolException('Could not load the language model: $e');
     }
   }
@@ -90,6 +159,7 @@ class LlmEngine {
     try {
       final session =
           await model.createSession(temperature: 0.7, maxOutputTokens: 2048);
+      _sessions.add(session);
       try {
         await session.addQueryChunk(gemma.Message.text(text: prompt, isUser: true));
         final out = (await session.getResponse()).trim();
@@ -98,6 +168,7 @@ class LlmEngine {
         }
         return out;
       } finally {
+        _sessions.remove(session);
         await session.close();
       }
     } on ToolException {
@@ -170,23 +241,69 @@ class LlmEngine {
       // `/no_think` for the same reason.
       isThinking: false,
     );
-    return _GemmaLlmChat(chat);
+    final wrapped = _GemmaLlmChat(chat, this);
+    _chats.add(wrapped);
+    return wrapped;
   }
 
-  Future<void> dispose() async {
+  /// Frees the model slot: stops any live generation, closes the sessions and
+  /// the native engine, and reports [LlmPhase.unloaded]. Queued behind an
+  /// in-flight load — tearing the engine down mid-create is a native crash.
+  /// Idempotent; the next request re-loads from the cached file.
+  Future<void> unload() {
+    final inflight = _inflight;
+    final future =
+        (inflight == null ? Future<void>.value() : inflight.catchError((_) {}))
+            .then((_) async {
+      await _releaseModel();
+      _emit(const LlmStatus(LlmPhase.unloaded));
+    });
+    _inflight = future;
+    _inflightKey = null;
+    return future.whenComplete(() {
+      if (identical(_inflight, future)) _inflight = null;
+    });
+  }
+
+  /// Stops + closes every conversation and the model itself. Does NOT emit —
+  /// callers own the resulting phase ([_load] emits loading/loaded).
+  Future<void> _releaseModel() async {
+    for (final chat in _chats.toList()) {
+      await chat.stopAndClose();
+    }
+    _chats.clear();
+    for (final session in _sessions.toList()) {
+      try {
+        await session.stopGeneration();
+      } catch (_) {
+        // Nothing in flight, or the session is already gone.
+      }
+      try {
+        await session.close();
+      } catch (_) {
+        // Already closed by its owner's `finally`.
+      }
+    }
+    _sessions.clear();
     await _model?.close();
     _model = null;
-    _loadedPath = null;
-    _loadedSupportImage = false;
-    _loadedFamily = null;
-    _loadedMaxTokens = null;
+    _loadedKey = null;
+    _loadedTaskId = null;
+    _activeMaxTokens = 4096;
   }
+
+  /// Task id of the model currently in memory, or null when the slot is empty.
+  String? get loadedTaskId => _model == null ? null : _loadedTaskId;
+
+  void _forget(_GemmaLlmChat chat) => _chats.remove(chat);
 }
 
 /// The only place plugin response types are mapped onto [LlmEvent].
 class _GemmaLlmChat implements LlmChat {
-  _GemmaLlmChat(this._chat);
+  _GemmaLlmChat(this._chat, this._engine);
   final gemma.InferenceChat _chat;
+  final LlmEngine _engine;
+  bool _closed = false;
 
   @override
   Stream<LlmEvent> send(String text, {List<Uint8List> images = const []}) async* {
@@ -229,8 +346,27 @@ class _GemmaLlmChat implements LlmChat {
     yield LlmTurnDone(buf.toString());
   }
 
-  /// No-op: [gemma.InferenceChat] owns its session and [LlmEngine.dispose]
-  /// closes the model.
+  /// Ends this conversation: native decoding is told to stop (cancelling the
+  /// Dart subscription alone only detaches the litertlm stream's consumer),
+  /// then the session's KV cache is released. The model stays loaded.
   @override
-  Future<void> close() async {}
+  Future<void> close() async {
+    _engine._forget(this);
+    await stopAndClose();
+  }
+
+  Future<void> stopAndClose() async {
+    if (_closed) return;
+    _closed = true;
+    try {
+      await _chat.stopGeneration();
+    } catch (_) {
+      // Nothing generating, or the session is already torn down.
+    }
+    try {
+      await _chat.close();
+    } catch (_) {
+      // Superseded sessions can already be closed; close is idempotent.
+    }
+  }
 }

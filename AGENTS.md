@@ -59,7 +59,7 @@ Data flow: **registry → engine executor → result → save/share**. The Phase
 - **DI auto-discovery:** bind each module into a `Set<ToolModule>` via `get_it`/`riverpod` (mirrors Gallery's Hilt `@IntoSet`). Never hand-maintain a tool list.
 - **`EngineKind` selects the executor.** A tool body NEVER imports a plugin directly. Each executor implements a tiny common contract — `prepare()` / `execute(input) -> Stream<ToolProgress>` / `dispose()` — so the FFmpeg fork can be swapped in one file (D4).
 - **Heavy `run()` work goes in an isolate** (`compute` / `Isolate.run`). The UI thread never blocks; progress is streamed with cancel support.
-- **Phase-3 agent: validate every tool-call's args against `fnSchema` before executing.** A 2B model hallucinates args — never run unvalidated. Guided chains only (Tier 3a single-tool, 3b 2–3 step with a confirm step); no full autonomy, no cloud planner.
+- **Phase-3 agent: validate every tool-call's args against `fnSchema` before executing.** A 2B model hallucinates args — never run unvalidated. Guided chains only (Tier 3a single-tool, 3b 2–3 step, validated steps auto-execute); no full autonomy, no cloud planner.
 - **No cloud in v1** (D5). Everything on-device; cloud-only tools are deferred, not stubbed.
 
 ## Engines → Packages (STACK.md)
@@ -106,8 +106,8 @@ On-demand only for `ONDEVICE-ML` tools. Flow: `tool.ensureReady()` → fetch cur
 
 ## Testing & QA
 - Framework: `flutter_test` (unit + widget); `test/` mirrors `lib/`.
-- **Run only tests you add/modify** unless asked otherwise. Test behavior, not plumbing: tool input→output correctness, arg-validation rejection of bad args, device-gating disable path, chain confirm step.
-- **Acceptance gates per phase** (PLAN.md) are the QA bar: P0 = csv→json runs end-to-end through registry→engine→result→share; P1 = PDF+image usable as a standalone toolkit (first RC); P1.5 = remove-bg+OCR+one upscale on mid-range Android; P3 = "compress this PDF and convert to grayscale" → agent chains two tools with a confirm.
+- **Run only tests you add/modify** unless asked otherwise. Test behavior, not plumbing: tool input→output correctness, arg-validation rejection of bad args, device-gating disable path, chain step hand-off.
+- **Acceptance gates per phase** (PLAN.md) are the QA bar: P0 = csv→json runs end-to-end through registry→engine→result→share; P1 = PDF+image usable as a standalone toolkit (first RC); P1.5 = remove-bg+OCR+one upscale on mid-range Android; P3 = "compress this PDF and convert to grayscale" → agent chains two tools unattended.
 - Early de-risking spikes before committing: Phase 1 FFmpeg fork build + PDF native ops; Phase 3 `flutter_gemma` integration (R1, R6).
 
 ## Key Risks to Respect (RISKS.md)

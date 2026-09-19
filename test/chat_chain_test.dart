@@ -1,13 +1,14 @@
-/// The core proof for controller-driven multi-tool chains: each confirmed step
-/// runs its tool (with live progress), persists a `toolStep` with a reopenable
-/// output path, and re-shortlists + rebuilds a fresh chat for the next step —
-/// so a chain can call *different* tools. Also proves the D6 confirm-per-step
-/// gate and the [_maxChainSteps] cap.
+/// The core proof for controller-driven multi-tool chains: each validated step
+/// runs its tool immediately (with live progress), persists a `toolStep` with a
+/// reopenable output path, and re-shortlists + rebuilds a fresh chat for the
+/// next step — so a chain can call *different* tools. Also proves the
+/// [_maxChainSteps] cap.
 ///
 /// getIt is wired with fakes; the LlmEngine hands back scripted chats so the
 /// whole loop runs on the host without a model or plugin.
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -20,6 +21,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:anvil/core/chat_repository.dart';
 import 'package:anvil/core/di.dart';
 import 'package:anvil/core/fn_schema.dart';
+import 'package:anvil/core/foreground_task.dart';
 import 'package:anvil/core/history_repository.dart';
 import 'package:anvil/core/registry.dart';
 import 'package:anvil/core/tool_io.dart';
@@ -108,8 +110,12 @@ class _ScriptedChat implements LlmChat {
 /// Pops the next scripted chat per [startChat]; counts invocations so a test
 /// can assert re-shortlisting happened once per step.
 class _FakeLlmEngine extends LlmEngine {
-  _FakeLlmEngine(this._chats);
+  _FakeLlmEngine(this._chats, {this.loadGate});
   final List<List<LlmEvent>> _chats;
+
+  /// When set, `ensureLoaded` blocks on it — a stand-in for the tens of
+  /// seconds a cold multi-GB `.litertlm` takes to map and build its kernels.
+  final Completer<void>? loadGate;
   int startChatCount = 0;
 
   @override
@@ -118,7 +124,10 @@ class _FakeLlmEngine extends LlmEngine {
     bool supportImage = false,
     ModelFamily family = ModelFamily.gemma4,
     int maxTokens = 4096,
-  }) async {}
+    String? taskId,
+  }) async {
+    if (loadGate != null) await loadGate!.future;
+  }
 
   @override
   Future<LlmChat> startChat({
@@ -241,6 +250,10 @@ void main() {
     getIt.registerSingleton<HistoryRepository>(_FakeHistoryRepository());
     getIt.registerSingleton<ToolRegistry>(ToolRegistry([toolA, toolB]));
     getIt.registerSingleton<ModelManager>(_FakeModelManager());
+    // The controller holds the process up for the duration of a turn; on the
+    // host there is no Android service behind the channel.
+    getIt.registerSingleton<ForegroundKeepAlive>(
+        ForegroundKeepAlive(supported: false));
   });
 
   tearDown(() async {
@@ -249,8 +262,11 @@ void main() {
     await tmp.delete(recursive: true);
   });
 
-  _FakeLlmEngine wireEngine(List<List<LlmEvent>> chats) {
-    final engine = _FakeLlmEngine(chats);
+  _FakeLlmEngine wireEngine(
+    List<List<LlmEvent>> chats, {
+    Completer<void>? loadGate,
+  }) {
+    final engine = _FakeLlmEngine(chats, loadGate: loadGate);
     getIt.registerSingleton<LlmEngine>(engine);
     return engine;
   }
@@ -284,43 +300,18 @@ void main() {
       addTearDown(container.dispose);
       final notifier = container.read(chatProvider.notifier);
 
+      // No taps anywhere: send drives both steps and the closing answer.
       await notifier.send('make a pdf then add text');
-      await settle(container, (s) => s.pending != null);
-      expect(container.read(chatProvider).pending!.step, 1);
-      expect(
-        container.read(chatProvider).pending!.call.tool.meta.qualifiedId,
-        'pdf/from-jpg',
-      );
-      expect(engine.startChatCount, 1);
+      await settle(container, (s) => !s.busy && s.messages.isNotEmpty);
 
-      // Step 1 confirm: runs tool A, persists a toolStep with an output path,
-      // then re-shortlists + starts a fresh chat for step 2 (different tool).
-      await notifier.confirm();
-      await settle(container, (s) => s.pending?.step == 2);
-      expect(engine.startChatCount, 2);
-      expect(
-        container.read(chatProvider).pending!.call.tool.meta.qualifiedId,
-        'pdf/add-text',
-      );
-      final stepMsgs = container
-          .read(chatProvider)
-          .messages
-          .where((m) => m.kind == ChatMessageKind.toolStep)
-          .toList();
-      expect(stepMsgs, hasLength(1));
-      expect(stepMsgs.single.outputPath, outAPath);
-
-      // Step 2 confirm: runs tool B, then the 3rd turn is plain text → finish.
-      await notifier.confirm();
-      await settle(container, (s) => !s.busy && s.pending == null);
       expect(engine.startChatCount, 3);
       final msgs = container.read(chatProvider).messages;
-      expect(
-        msgs.where((m) => m.kind == ChatMessageKind.toolStep),
-        hasLength(2),
-      );
+      final steps =
+          msgs.where((m) => m.kind == ChatMessageKind.toolStep).toList();
+      expect(steps, hasLength(2));
+      // Step 1's output is reopenable and became step 2's input.
+      expect(steps.first.outputPath, outAPath);
       expect(msgs.last.text, 'Done.');
-      expect(container.read(chatProvider).busy, isFalse);
     },
   );
 
@@ -333,21 +324,52 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     final notifier = container.read(chatProvider.notifier);
+
     await notifier.send('make a pdf again and again');
-    await settle(container, (s) => s.pending?.step == 1);
+    await settle(container, (s) => !s.busy && s.messages.isNotEmpty);
 
-    // Confirm through steps 1–4; each advances the pending step.
-    for (var step = 2; step <= 5; step++) {
-      await notifier.confirm();
-      await settle(container, (s) => s.pending?.step == step);
-    }
-
-    // The 5th confirm hits the cap: a note message, no 6th startChat.
-    await notifier.confirm();
-    await settle(container, (s) => !s.busy && s.pending == null);
+    // Five steps ran back to back; the cap stopped a sixth turn.
     expect(engine.startChatCount, 5);
     final msgs = container.read(chatProvider).messages;
     expect(msgs.where((m) => m.kind == ChatMessageKind.toolStep), hasLength(5));
     expect(msgs.last.text, contains('5-step limit'));
   });
+
+  test(
+    'a cold model does not swallow the turn: the question is on screen and '
+    'the chat is busy while the model is still loading',
+    () async {
+      final gate = Completer<void>();
+      wireEngine([
+        [
+          LlmToolCall(name: fnNameFor(toolA.meta), args: {'file': inputPath}),
+        ],
+        const [LlmTurnDone('Done.')],
+      ], loadGate: gate);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(chatProvider.notifier);
+      final keepAlive = getIt<ForegroundKeepAlive>();
+
+      final sending = notifier.send('make a pdf');
+      await settle(container, (s) => s.messages.isNotEmpty);
+
+      // Still inside ensureLoaded: the composer was cleared, so the user turn
+      // and the busy state are what stop the screen looking frozen.
+      expect(gate.isCompleted, isFalse);
+      final mid = container.read(chatProvider);
+      expect(mid.busy, isTrue);
+      expect(mid.messages.single.role, ChatRole.user);
+      expect(mid.messages.single.text, 'make a pdf');
+      // …and the process is held so the load survives an app switch.
+      expect(keepAlive.active, isTrue);
+
+      gate.complete();
+      await sending;
+      await settle(container, (s) => !s.busy);
+
+      // The step ran unattended and the hold was handed back at the end.
+      expect(keepAlive.active, isFalse);
+    },
+  );
 }
