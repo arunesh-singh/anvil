@@ -63,6 +63,7 @@ dependencies:
   sherpa_onnx: ^1.13.8 # Phase 1.5: ASR transcribe/subtitles
   flutter_gemma: ^1.8.2 # Phase 3: on-device Gemma (write tools + agent)
   flutter_gemma_litertlm: ^1.6.3 # Phase 3: .litertlm inference engine (FFI)
+  ffi: ^2.2.0 # Phase 3: Utf8/malloc helpers for the Needle 3 dart:ffi worker
 
 dependency_overrides:
   # flutter_avif_android 3.1.0 ships duplicate FlutterAvifPlugin (.java + .kt);

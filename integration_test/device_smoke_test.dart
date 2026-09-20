@@ -21,6 +21,7 @@ import 'package:anvil/core/tool_module.dart';
 import 'package:anvil/engines/llm_chat.dart';
 import 'package:anvil/engines/llm_engine.dart';
 import 'package:anvil/engines/pdf_engine.dart';
+import 'package:anvil/models/manifest.dart';
 import 'package:anvil/models/model_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -319,6 +320,73 @@ void main() {
       _skipOrFail(e, 'agent chain smoke');
     }
   }, timeout: const Timeout(Duration(minutes: 45)));
+
+  testWidgets('needle block: Needle 3 routes a request through the FFI', (
+    tester,
+  ) async {
+    // The ONLY coverage for lib/engines/needle_ffi.dart: the vendored engine
+    // is linked into libneedle_ffi.so, so the dlopen, the C signatures and
+    // the worker protocol cannot be exercised off-device at all.
+    try {
+      final loaded = await getIt<ModelManager>().ensureReady(
+        const ModelSpec(taskId: 'agent.llm.needle'),
+      );
+      final engine = getIt<LlmEngine>();
+      await engine.ensureLoaded(
+        loaded.filePath,
+        family: ModelFamily.needle3,
+        maxTokens: 2048,
+        taskId: 'agent.llm.needle',
+      );
+      expect(engine.status.phase, LlmPhase.loaded);
+      expect(engine.loadedTaskId, 'agent.llm.needle');
+
+      final pdfBytes = await getIt<PdfEngine>().imagesToPdf([_png, _png]);
+      final src = await fs.writeBytes('needle.pdf', pdfBytes);
+      final tools = shortlistTools(
+        registry.all,
+        'make this pdf smaller',
+        limit: 5,
+      );
+      expect(tools.map((t) => t.meta.qualifiedId), contains('pdf/compress'));
+
+      final session = AgentSession(
+        chat: await engine.startChat(
+          fnSchemas: [for (final t in tools) t.fnSchema],
+          // Needle takes environment facts, not prose rules.
+          systemInstruction: 'date: 2026-01-01 Thu 09:00; device: phone',
+          temperature: 0.1,
+          topK: 1,
+          topP: 1.0,
+          maxOutputTokens: 512,
+          family: ModelFamily.needle3,
+        ),
+        tools: tools,
+        availableFiles: [InputFile(path: src.path, name: 'needle.pdf')],
+      );
+      final last = (await session
+              .start('make this pdf smaller (${src.path})')
+              .toList())
+          .last;
+      expect(last, isA<AgentToolCall>());
+      final call = (last as AgentToolCall).call;
+      expect(call.tool.meta.qualifiedId, 'pdf/compress');
+      // Needle grounds the path out of the request and clips it; the call
+      // still has to arrive carrying the real attachment.
+      expect(call.input.files.single.path, src.path);
+      await session.close();
+
+      // Needle has no text path — the write tools must be refused loudly
+      // rather than handed a JSON envelope as prose.
+      await expectLater(
+        engine.generate('Fix the grammar: he go to school.'),
+        throwsA(isA<ToolException>()),
+      );
+      await engine.unload();
+    } on Exception catch (e) {
+      _skipOrFail(e, 'needle 3 smoke');
+    }
+  }, timeout: const Timeout(Duration(minutes: 15)));
 
   testWidgets('chat block: a session and its messages persist (v3 migration)', (
     tester,

@@ -87,6 +87,7 @@ void main() {
       'image.inpaint',
       'asr.transcribe',
       'agent.llm',
+      'agent.llm.needle',
     ]) {
       expect(manifest.models[taskId]?.variants, isNotEmpty,
           reason: 'missing manifest entry for $taskId');

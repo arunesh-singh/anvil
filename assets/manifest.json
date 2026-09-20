@@ -138,6 +138,25 @@
           "version": "1.0.0"
         }
       ]
+    },
+    "agent.llm.needle": {
+      "chat": true,
+      "variants": [
+        {
+          "id": "needle3-20l",
+          "tier": "fast",
+          "url": "https://huggingface.co/Cactus-Compute/needle3/resolve/b009f8937124b2d0458f4ed040c10c41fd2a0dfc/needle3.cact",
+          "sha256": "c9d915eca282ed42d1a09b143b592adb4cc6744ffe2d294adf5cfc5548170c38",
+          "sizeBytes": 35335380,
+          "runtime": "needle",
+          "minRamGb": 2,
+          "accelerator": "cpu",
+          "supportsImage": false,
+          "family": "needle3",
+          "maxTokens": 2048,
+          "version": "3.0.0"
+        }
+      ]
     }
   }
 }

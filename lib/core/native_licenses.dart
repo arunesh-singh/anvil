@@ -1,6 +1,8 @@
 /// Attribution for native binaries we ship that no pub LICENSE describes.
 /// FFmpeg is LGPL-3.0: §4 wants the notice, the license text, and a route to
-/// relink the app against a modified FFmpeg.
+/// relink the app against a modified FFmpeg. Needle 3 is MIT: the notice and
+/// the copyright line are all §1 asks for, but neither binary arrives through
+/// pub, so neither shows up in the generated license list on its own.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -21,9 +23,24 @@ libraries, replace the .so files of the matching ABI inside the APK, re-sign
 it, and install the result.
 ''';
 
+const String _needleNotice = '''
+Anvil links the prebuilt Needle 3 engine archive (libneedle.a, arm64-v8a and
+armeabi-v7a) vendored at third_party/needle/ from the Hugging Face repository
+Cactus-Compute/needle3, revision b009f8937124b2d0458f4ed040c10c41fd2a0dfc.
+
+Needle is licensed under the MIT License; the full text ships in
+third_party/needle/LICENSE. Source: https://github.com/cactus-compute/needle
+
+The archive is linked whole into libneedle_ffi.so (android/app/src/main/cpp);
+to run Anvil against your own build, replace third_party/needle/<abi>/
+libneedle.a and rebuild.
+''';
+
 void registerNativeLicenses() {
   LicenseRegistry.addLicense(() async* {
     yield const LicenseEntryWithLineBreaks(
         <String>['FFmpeg (native binaries)'], _ffmpegNotice);
+    yield const LicenseEntryWithLineBreaks(
+        <String>['Needle 3 (native engine)'], _needleNotice);
   });
 }

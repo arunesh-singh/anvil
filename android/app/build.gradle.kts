@@ -34,6 +34,21 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Needle 3's engine is a static archive we relink into
+        // libneedle_ffi.so. abiFilters here scopes ONLY the CMake build (the
+        // archive exists for arm64-v8a/armeabi-v7a and nothing else);
+        // defaultConfig.ndk.abiFilters would instead strip x86_64 from every
+        // other plugin and break emulator builds of the rest of the app.
+        // c++_static keeps libc++ inside our .so — the archive is its only
+        // consumer, so no libc++_shared.so is added to the APK.
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_static")
+                cppFlags += "-std=c++17"
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
+        }
     }
 
     signingConfigs {
@@ -63,6 +78,13 @@ android {
     packaging {
         jniLibs {
             pickFirsts.add("**/libonnxruntime.so")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
 }

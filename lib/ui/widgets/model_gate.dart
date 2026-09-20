@@ -165,6 +165,8 @@ bool modelReady(WidgetRef ref, String? taskId) =>
   'asr.transcribe' => (label: 'Transcribe audio', icon: Icons.graphic_eq),
   'agent.llm' => (label: 'Gemma 4 E2B', icon: Icons.smart_toy_outlined),
   'agent.llm.qwen' => (label: 'Qwen3 (4B / 1.7B)', icon: Icons.smart_toy_outlined),
+  'agent.llm.needle' =>
+    (label: 'Needle 3 (tools only)', icon: Icons.smart_toy_outlined),
   _ => (label: taskId, icon: Icons.memory),
 };
 

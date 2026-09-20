@@ -275,8 +275,16 @@ String _extOf(String name) {
   return dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
 }
 
-/// Fills a missing file/files argument of [tool] from [available] by accepted
+/// Fills a file/files argument of [tool] from [available] by accepted
 /// extension, so the 2B model need not copy paths itself (its top failure).
+///
+/// Also REPLACES an argument that is not one of [available]: Needle grounds
+/// its arguments in the request text and produces `{"file": "pdf"}` or
+/// `{"file": "attached video"}`, which would fail the existence check and burn
+/// a repair. [available] is by construction the only legal input set
+/// (attachments on step 1, prior-step outputs afterwards), so any other value
+/// would have been rejected anyway.
+///
 /// Pure: also used by the controller to build a deterministic fallback call.
 Map<String, dynamic> fillFileArgs(
   ToolModule tool,
@@ -286,7 +294,14 @@ Map<String, dynamic> fillFileArgs(
   final meta = tool.meta;
   if (!meta.requiresInput || available.isEmpty) return args;
   final key = meta.acceptsMultiple ? 'files' : 'file';
-  if (args[key] != null) return args;
+  final provided = args[key];
+  final availablePaths = {for (final f in available) f.path};
+  final resolved = switch (provided) {
+    String p => availablePaths.contains(p),
+    List l => l.isNotEmpty && l.every(availablePaths.contains),
+    _ => false,
+  };
+  if (resolved) return args;
   final matches = [
     for (final f in available)
       if (meta.acceptedExtensions.isEmpty ||

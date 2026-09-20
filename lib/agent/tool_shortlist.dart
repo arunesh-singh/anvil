@@ -7,67 +7,8 @@
 library;
 
 import 'package:anvil/core/tool_module.dart';
+import 'package:anvil/core/tool_vocab.dart';
 import 'package:anvil/ui/widgets/slab.dart' show categoryLabel;
-
-/// Words that carry no tool signal; they would otherwise score every tool.
-const _stopWords = {
-  'the',
-  'and',
-  'this',
-  'that',
-  'for',
-  'with',
-  'from',
-  'into',
-  'please',
-  'can',
-  'you',
-  'file',
-  'make',
-  'turn',
-  // Generic filler that surfaced unrelated tools on vague asks like
-  // "use the tool" (logged: write/* shortlisted for an image request).
-  'use',
-  'tool',
-  'tools',
-};
-
-/// Maps common user phrasings onto the vocabulary that actually appears in
-/// tool ids/labels, so a request the lexical scorer would miss still surfaces
-/// the right tool (missing the tool from the list is the worst failure — the
-/// model cannot call what it never saw).
-const _synonyms = {
-  'shrink': ['compress'],
-  'smaller': ['compress'],
-  'greyscale': ['grayscale'],
-  'grayscale': ['grayscale'],
-  'bw': ['grayscale'],
-  'photo': ['image'],
-  'pic': ['image'],
-  'picture': ['image'],
-  'transcribe': ['audio', 'text'],
-  'transcript': ['audio', 'text'],
-  'subtitle': ['subtitles'],
-  'caption': ['subtitles', 'text'],
-  'rotate': ['rotate'],
-  'combine': ['merge'],
-  'join': ['merge'],
-  'write': ['text'],
-  'label': ['text'],
-  'description': ['text'],
-  'describe': ['text'],
-  'note': ['text', 'annotate'],
-  'place': ['add'],
-  'put': ['add'],
-  'insert': ['add'],
-  'stamp': ['add', 'sign'],
-  'find': ['identify'],
-  'identify': ['identify'],
-  'recognize': ['identify'],
-  'recognise': ['identify'],
-  'detect': ['identify'],
-  'whats': ['identify'],
-};
 
 /// Ranks [tools] against a natural-language [request] and returns at most
 /// [limit] candidates whose declarations go into the model's tool list.
@@ -79,12 +20,12 @@ List<ToolModule> shortlistTools(
 }) {
   final tokens = <String>{
     for (final t in request.toLowerCase().split(RegExp(r'[^a-z0-9]+')))
-      if (t.length >= 3 && !_stopWords.contains(t)) t,
+      if (t.length >= 3 && !toolStopWords.contains(t)) t,
   };
   // Expand with vocabulary synonyms (short trigger words like 'bw' are kept
   // even though they fall under the length filter above).
   for (final w in request.toLowerCase().split(RegExp(r'[^a-z0-9]+'))) {
-    final mapped = _synonyms[w];
+    final mapped = toolSynonyms[w];
     if (mapped != null) tokens.addAll(mapped);
   }
   if (tokens.isEmpty && attachmentExts.isEmpty) return const [];

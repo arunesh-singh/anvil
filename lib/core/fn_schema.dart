@@ -7,8 +7,9 @@
 library;
 
 import 'package:anvil/core/tool_module.dart';
+import 'package:anvil/core/tool_vocab.dart';
 
-/// JSON-schema-shaped map: `{name, description, parameters}`.
+/// JSON-schema-shaped map: `{name, description, parameters, triggers}`.
 Map<String, dynamic> fnSchemaFor(ToolMeta meta) {
   final properties = <String, dynamic>{
     if (meta.requiresInput)
@@ -51,6 +52,10 @@ Map<String, dynamic> fnSchemaFor(ToolMeta meta) {
         if (meta.requiresInput) meta.acceptsMultiple ? 'files' : 'file',
       ],
     },
+    // Needle 3 routes on these; the LiteRT path reads only name/description/
+    // parameters, so Gemma and Qwen never see the key. It stays OUT of
+    // `parameters` — it is routing metadata, not an argument.
+    'triggers': needleTriggersFor(meta),
   };
 }
 

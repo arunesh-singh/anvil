@@ -623,6 +623,25 @@ void main() {
       expect(chat.toolResults, isEmpty);
     });
 
+    test('a fabricated file arg is replaced by an available file', () async {
+      // Needle grounds arguments in the request text, so it answers
+      // {"file": "pdf"} instead of a path. That must resolve, not burn a
+      // repair on a non-existent file.
+      final chat = _FakeChat([
+        const [LlmToolCall(name: 'pdf_compress', args: {'file': 'pdf'})],
+      ]);
+      final s = AgentSession(
+        chat: chat,
+        tools: [compress, grayscale],
+        availableFiles: const [InputFile(path: '/tmp/a.pdf', name: 'a.pdf')],
+        fileExists: _always,
+      );
+      final events = await s.start('make this pdf smaller').toList();
+      expect((events.last as AgentToolCall).call.input.files.single.path,
+          '/tmp/a.pdf');
+      expect(chat.toolResults, isEmpty);
+    });
+
     test('continueAfterToolError feeds the error back and drives a new call '
         '(#4)', () async {
       final chat = _FakeChat([

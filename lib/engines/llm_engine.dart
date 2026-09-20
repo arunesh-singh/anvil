@@ -1,8 +1,12 @@
-/// Wraps `flutter_gemma` (Gemma 4 E2B via the LiteRT-LM FFI engine) — the
-/// single place the plugin is touched. The model file (`agent.llm`, a
-/// `.litertlm` bundle) is delivered/verified by [ModelManager]; this engine
-/// installs it into the plugin and serves one-shot generations (write tools)
-/// and function-calling chats (the agent, through the plugin-free [LlmChat]).
+/// Owns the app's single language-model slot and serves it to two callers:
+/// one-shot generations (write tools) and function-calling chats (the agent,
+/// through the plugin-free [LlmChat] seam).
+///
+/// Two backends sit behind that slot, picked by the manifest [ModelFamily]:
+/// `flutter_gemma` (Gemma 4 E2B / Qwen3 `.litertlm`) — this is the only file
+/// that touches the plugin — and the Needle 3 C engine (`.cact`) over
+/// [NeedleTransport], a grammar-constrained tool router with no text
+/// generation. [ModelManager] delivers and verifies the file either way.
 ///
 /// The slot holds ONE model. Every transition of that slot is broadcast on
 /// [LlmEngine.statusStream] so the UI can show "loading Gemma 4 E2B…" instead
@@ -16,7 +20,10 @@ import 'dart:typed_data';
 import 'package:flutter_gemma/flutter_gemma.dart' as gemma;
 
 import 'package:anvil/core/tool_io.dart';
+import 'package:anvil/core/tool_vocab.dart';
 import 'package:anvil/engines/llm_chat.dart';
+import 'package:anvil/engines/needle_engine.dart';
+import 'package:anvil/engines/needle_ffi.dart';
 import 'package:anvil/models/manifest.dart';
 
 /// Lifecycle of the engine's single in-memory model slot.
@@ -37,6 +44,12 @@ class LlmStatus {
 }
 
 class LlmEngine {
+  /// [needleTransportFactory] is injectable so host tests can exercise the
+  /// needle backend without a device (the real one spawns an FFI worker).
+  LlmEngine({NeedleTransport Function()? needleTransportFactory})
+      : _needleTransportFactory =
+            needleTransportFactory ?? NeedleIsolateTransport.new;
+
   /// The KV budget (prompt + output) of the currently loaded model; mirrors
   /// createModel's maxTokens. Callers read [contextTokens] to size prompts.
   int _activeMaxTokens = 4096;
@@ -45,6 +58,14 @@ class LlmEngine {
   gemma.InferenceModel? _model;
   String? _loadedKey;
   String? _loadedTaskId;
+
+  /// Backend of the model in the slot: null when empty, [ModelFamily.needle3]
+  /// when the needle worker owns it, a LiteRT family otherwise.
+  ModelFamily? _loadedFamily;
+
+  /// The needle worker, alive only while a needle model holds the slot.
+  final NeedleTransport Function() _needleTransportFactory;
+  NeedleTransport? _needle;
 
   /// Live conversations/sessions handed out for the loaded model. Tracked so
   /// [unload] can stop native decoding before the model is closed — freeing
@@ -73,10 +94,14 @@ class LlmEngine {
     if (!_statusCtl.isClosed) _statusCtl.add(s);
   }
 
-  /// Maps a manifest [ModelFamily] onto the plugin's `ModelType`.
+  /// Maps a manifest [ModelFamily] onto the plugin's `ModelType`. Needle 3 is
+  /// not a LiteRT model at all; reaching here with it is a routing bug, not a
+  /// user-facing failure.
   gemma.ModelType _gemmaType(ModelFamily f) => switch (f) {
     ModelFamily.gemma4 => gemma.ModelType.gemma4,
     ModelFamily.qwen3 => gemma.ModelType.qwen3,
+    ModelFamily.needle3 =>
+      throw StateError('needle3 does not use the LiteRT engine'),
   };
 
   String _keyOf(String path, bool supportImage, ModelFamily family, int max) =>
@@ -92,7 +117,7 @@ class LlmEngine {
       int maxTokens = 4096,
       String? taskId}) {
     final key = _keyOf(modelPath, supportImage, family, maxTokens);
-    if (_model != null && _loadedKey == key) return Future<void>.value();
+    if (_loadedKey == key) return Future<void>.value();
     final inflight = _inflight;
     if (inflight != null && _inflightKey == key) return inflight;
     final future =
@@ -112,11 +137,20 @@ class LlmEngine {
   Future<void> _load(String modelPath, String key, bool supportImage,
       ModelFamily family, int maxTokens, String? taskId) async {
     // Re-check: a queued load may have been satisfied by the one ahead of it.
-    if (_model != null && _loadedKey == key) return;
+    if (_loadedKey == key) return;
     _emit(LlmStatus(LlmPhase.loading, taskId: taskId, since: DateTime.now()));
     await _releaseModel();
-    final modelType = _gemmaType(family);
     try {
+      if (family == ModelFamily.needle3) {
+        // 35 MB read inside the worker (~0.3 s), but it emits the same
+        // loading → loaded transitions so the UI panel behaves the same.
+        final transport = _needleTransportFactory();
+        _needle = transport;
+        await transport.load(modelPath);
+        _finishLoad(key, family, maxTokens, taskId);
+        return;
+      }
+      final modelType = _gemmaType(family);
       await gemma.FlutterGemma.installModel(
         modelType: modelType,
         fileType: gemma.ModelFileType.litertlm,
@@ -139,18 +173,34 @@ class LlmEngine {
         // default) for Qwen3.
         enableSpeculativeDecoding: family == ModelFamily.gemma4 ? true : null,
       );
-      _activeMaxTokens = maxTokens;
-      _loadedKey = key;
-      _loadedTaskId = taskId;
-      _emit(LlmStatus(LlmPhase.loaded, taskId: taskId, since: DateTime.now()));
+      _finishLoad(key, family, maxTokens, taskId);
     } catch (e) {
+      // A needle load assigns the worker before it can fail, so the slot has
+      // to be cleared here or a dead isolate would hold the next load.
+      await _releaseModel();
       _emit(const LlmStatus(LlmPhase.unloaded));
+      if (family == ModelFamily.needle3) throw needleFailure(e);
       throw ToolException('Could not load the language model: $e');
     }
   }
 
-  /// One-shot generation for the write tools.
+  void _finishLoad(
+      String key, ModelFamily family, int maxTokens, String? taskId) {
+    _activeMaxTokens = maxTokens;
+    _loadedKey = key;
+    _loadedTaskId = taskId;
+    _loadedFamily = family;
+    _emit(LlmStatus(LlmPhase.loaded, taskId: taskId, since: DateTime.now()));
+  }
+
+  /// One-shot generation for the write tools. Needle 3 has no text-generation
+  /// path at all (grammar-constrained function calls only), so it refuses
+  /// loudly instead of returning an envelope the caller would write to a file.
   Future<String> generate(String prompt) async {
+    if (_loadedFamily == ModelFamily.needle3) {
+      throw const ToolException('Needle 3 cannot write text — switch the '
+          'model to Gemma 4 E2B for write tools.');
+    }
     final model = _model;
     if (model == null) {
       throw const ToolException(
@@ -191,6 +241,13 @@ class LlmEngine {
     bool supportImage = false,
     ModelFamily family = ModelFamily.gemma4,
   }) async {
+    if (family == ModelFamily.needle3) {
+      return _startNeedleChat(
+        fnSchemas: fnSchemas,
+        systemFacts: systemInstruction,
+        maxOutputTokens: maxOutputTokens,
+      );
+    }
     final model = _model;
     if (model == null) {
       throw const ToolException(
@@ -246,6 +303,32 @@ class LlmEngine {
     return wrapped;
   }
 
+  /// Opens a needle conversation: the declarations (Anvil's schema shape plus
+  /// `triggers`) and the environment facts go in once, then the KV state is
+  /// cleared so the new chat starts from nothing. `temperature/topK/topP` have
+  /// no meaning for a grammar-constrained decode and are ignored.
+  Future<LlmChat> _startNeedleChat({
+    required List<Map<String, dynamic>> fnSchemas,
+    required String systemFacts,
+    required int maxOutputTokens,
+  }) async {
+    final transport = _needle;
+    if (transport == null) {
+      throw const ToolException(
+          'The language model is not loaded — open the assistant again.');
+    }
+    try {
+      await transport.init(
+        system: systemFacts,
+        toolsJson: needleToolsJson(fnSchemas),
+      );
+      await transport.reset();
+    } catch (e) {
+      throw needleFailure(e);
+    }
+    return NeedleChat(transport: transport, maxOutputTokens: maxOutputTokens);
+  }
+
   /// Frees the model slot: stops any live generation, closes the sessions and
   /// the native engine, and reports [LlmPhase.unloaded]. Queued behind an
   /// in-flight load — tearing the engine down mid-create is a native crash.
@@ -287,13 +370,19 @@ class LlmEngine {
     _sessions.clear();
     await _model?.close();
     _model = null;
+    // The needle engine is process-global, so the worker goes with the slot:
+    // a stale one would keep 35 MB mapped and answer from the old weights.
+    final needle = _needle;
+    _needle = null;
+    await needle?.dispose();
     _loadedKey = null;
     _loadedTaskId = null;
+    _loadedFamily = null;
     _activeMaxTokens = 4096;
   }
 
   /// Task id of the model currently in memory, or null when the slot is empty.
-  String? get loadedTaskId => _model == null ? null : _loadedTaskId;
+  String? get loadedTaskId => _loadedKey == null ? null : _loadedTaskId;
 
   void _forget(_GemmaLlmChat chat) => _chats.remove(chat);
 }

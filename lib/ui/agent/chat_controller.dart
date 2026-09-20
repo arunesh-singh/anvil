@@ -89,6 +89,9 @@ class ChatController extends Notifier<ChatUiState> {
   // --- Chain orchestration (controller-driven; one AgentSession per step) --
   static const int _maxChainSteps = 5;
   static const int _agentToolLimit = 6; // fewer schemas: better 2B selection + tokens
+  // Needle renders at most five declarations per turn — above five its
+  // retrieval head silently drops the rest, and a dropped tool is unreachable.
+  static const int _needleToolLimit = 5;
   static const int _imageTokenCost = 300; // Gemma 4 ~280 tokens/image; round up
   static const int _promptMargin = 128; // headroom below the KV budget
   final List<ChainStep> _steps = [];
@@ -391,10 +394,11 @@ class ChatController extends Notifier<ChatUiState> {
     _closeSession();
     final session = state.current!;
     final query = first ? _request : chainShortlistQuery(_request, _steps);
+    final needle = _modelFamily == ModelFamily.needle3;
     final candidates = shortlistTools(
       getIt<ToolRegistry>().all,
       query,
-      limit: _agentToolLimit,
+      limit: needle ? _needleToolLimit : _agentToolLimit,
       attachmentExts: first
           ? ({for (final f in _attachments) _extOf(f.name)}
               ..removeWhere((e) => e.isEmpty))
@@ -406,7 +410,11 @@ class ChatController extends Notifier<ChatUiState> {
       'Shortlisted ${candidates.length} tool(s) for step ${_steps.length + 1}',
       detail: [for (final t in candidates) t.meta.qualifiedId].join('\n'),
     );
-    final system = _systemInstruction(first ? _attachments : const []);
+    // Needle ignores prose instructions and only accepts environment facts;
+    // the rule list would be dead tokens diluting its grounding.
+    final system = needle
+        ? _needleSystemFacts()
+        : _systemInstruction(first ? _attachments : const []);
     final chat = await getIt<LlmEngine>().startChat(
       fnSchemas: [for (final t in candidates) t.fnSchema],
       systemInstruction: system,
@@ -433,22 +441,35 @@ class ChatController extends Notifier<ChatUiState> {
       step: _steps.length + 1,
       availableFiles: _stepFiles,
     );
-    final String prompt;
+    String prompt;
     if (first) {
       final base = _basePrompt(_priorMessages, _request);
-      final schemaTokens = candidates.fold<int>(
-          0, (a, t) => a + estimateTokens(jsonEncode(t.fnSchema)));
-      final reserved = estimateTokens(system) +
-          schemaTokens +
-          estimateTokens(base) +
-          _images.length * _imageTokenCost +
-          session.maxOutputTokens +
-          _promptMargin;
-      final blocks =
-          fitTextBlocks(_textBlocks, getIt<LlmEngine>().contextTokens - reserved);
-      prompt = base + blocks.join();
+      if (needle) {
+        // Needle cannot read or summarise document text, so attached blocks
+        // are pure dilution.
+        prompt = base;
+      } else {
+        final schemaTokens = candidates.fold<int>(
+            0, (a, t) => a + estimateTokens(jsonEncode(t.fnSchema)));
+        final reserved = estimateTokens(system) +
+            schemaTokens +
+            estimateTokens(base) +
+            _images.length * _imageTokenCost +
+            session.maxOutputTokens +
+            _promptMargin;
+        final blocks = fitTextBlocks(
+            _textBlocks, getIt<LlmEngine>().contextTokens - reserved);
+        prompt = base + blocks.join();
+      }
     } else {
       prompt = continuationPrompt(_request, _steps);
+    }
+    if (needle && _stepFiles.isNotEmpty) {
+      // Needle grounds every argument in the INPUT: a path that appears only
+      // in the system turn is not used — it fabricates `{"file": "pdf"}`
+      // instead. The parenthesised suffix measured best; a `files:` line
+      // skewed routing toward multi-file tools.
+      prompt = '$prompt (${[for (final f in _stepFiles) f.path].join(' ')})';
     }
     logAction(
       logSourceAgent,
@@ -890,6 +911,17 @@ String _systemInstruction(List<InputFile> files) {
       'instead. Never reply with an empty message.\n'
       'Available files:\n'
       '$list';
+}
+
+/// Needle's system turn: environment facts only. It ignores prose rules (it
+/// has no instruction-following path at all), but it does ground date/device
+/// references against whatever facts it is given.
+String _needleSystemFacts() {
+  final n = DateTime.now();
+  String two(int v) => v.toString().padLeft(2, '0');
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  return 'date: ${n.year}-${two(n.month)}-${two(n.day)} '
+      '${days[n.weekday - 1]} ${two(n.hour)}:${two(n.minute)}; device: phone';
 }
 
 final chatProvider = NotifierProvider<ChatController, ChatUiState>(

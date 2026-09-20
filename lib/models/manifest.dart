@@ -43,17 +43,20 @@ enum ModelTier {
   };
 }
 
-/// Model architecture family; selects the flutter_gemma `ModelType` and the
-/// function-call format the plugin weaves (Gemma 4 native tokens vs Qwen3's
-/// `QwenFunctionCallFormat` text stream). Defaults [gemma4] for
-/// backward-compatible manifests that omit `family`.
+/// Model architecture family; selects the backend and the function-call
+/// format: Gemma 4 native tokens, Qwen3's `QwenFunctionCallFormat` text stream
+/// (both via flutter_gemma), or the Needle 3 C engine's grammar-constrained
+/// envelope. Defaults [gemma4] for backward-compatible manifests that omit
+/// `family`.
 enum ModelFamily {
   gemma4,
-  qwen3;
+  qwen3,
+  needle3;
 
   static ModelFamily parse(String raw, String context) => switch (raw) {
     'gemma4' => gemma4,
     'qwen3' => qwen3,
+    'needle3' => needle3,
     _ => throw ManifestFormatException("$context: unknown family '$raw'"),
   };
 }
@@ -64,12 +67,16 @@ enum ModelRuntime {
   sherpa,
 
   /// LiteRT `.task` bundle (flutter_gemma / MediaPipe GenAI).
-  task;
+  task,
+
+  /// `.cact` archive (Needle 3 C engine).
+  needle;
 
   static ModelRuntime parse(String raw, String context) => switch (raw) {
     'onnx' => onnx,
     'sherpa' => sherpa,
     'task' => task,
+    'needle' => needle,
     _ => throw ManifestFormatException("$context: unknown runtime '$raw'"),
   };
 }
