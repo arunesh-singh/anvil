@@ -486,9 +486,27 @@ class ChatController extends Notifier<ChatUiState> {
   Future<void> _runStep(AgentToolCall pending) async {
     final session = _session;
     if (session == null) return;
+    final call = pending.call;
+    // Loop-breaker: a weak model, told to "call the next tool", re-applies a
+    // one-shot transform to its own fresh output every step until the cap
+    // (observed: grayscale five times). If this call would just re-process the
+    // previous step's sole output with the same tool, the request is already
+    // satisfied — end the chain instead of looping.
+    if (_isNoOpRepeat(call)) {
+      final last = _steps.last;
+      logAction(
+        logSourceAgent,
+        'Chain complete: ${call.tool.meta.qualifiedId} would re-process its '
+        'own output — stopping instead of looping',
+      );
+      await _endChain(
+        '${last.toolLabel} is done — "${last.outputName ?? 'the result'}" is '
+        'ready. Re-running it would not change the result.',
+      );
+      return;
+    }
     state = state.copyWith(busy: true);
     await _holdProcess('Anvil is running a step');
-    final call = pending.call;
     logAction(
       logSourceAgent,
       'Step ${pending.step} running: ${call.tool.meta.qualifiedId}',
@@ -549,6 +567,7 @@ class ChatController extends Notifier<ChatUiState> {
     _steps.add(
       ChainStep(
         toolLabel: call.tool.meta.label,
+        toolId: call.tool.meta.qualifiedId,
         outputName: outFile?.name,
         outputPath: outFile?.path,
         resultText: result.text,
@@ -562,20 +581,38 @@ class ChatController extends Notifier<ChatUiState> {
       outputPath: outFile?.path,
     );
     if (_steps.length >= _maxChainSteps) {
-      await _addAssistant(
-        state.currentId!,
-        ChatMessageKind.text,
-        text:
-            'Reached the $_maxChainSteps-step limit — stopping. '
-            'Last output: ${outFile?.name ?? 'none'}.',
+      await _endChain(
+        'Reached the $_maxChainSteps-step limit — stopping. '
+        'Last output: ${outFile?.name ?? 'none'}.',
       );
-      await _touch();
-      state = state.copyWith(busy: false);
-      _closeSession();
-      await _releaseProcess();
       return;
     }
     await _startStep(first: false);
+  }
+
+  /// True when [call] would re-apply the tool that produced the immediately
+  /// preceding step to that step's sole output — the degenerate loop a weak
+  /// model falls into on an already-satisfied one-shot request. One input,
+  /// same tool, same path: re-running it changes nothing.
+  bool _isNoOpRepeat(ValidatedCall call) {
+    final last = _steps.isEmpty ? null : _steps.last;
+    if (last == null || last.toolId == null || last.outputPath == null) {
+      return false;
+    }
+    if (call.tool.meta.qualifiedId != last.toolId) return false;
+    final files = call.input.files;
+    return files.length == 1 && files.single.path == last.outputPath;
+  }
+
+  /// Ends the chain cleanly: records a closing assistant line, hands the
+  /// process back, and clears busy. Shared by the step cap and the
+  /// no-op-repeat loop-breaker.
+  Future<void> _endChain(String text) async {
+    await _addAssistant(state.currentId!, ChatMessageKind.text, text: text);
+    await _touch();
+    state = state.copyWith(busy: false);
+    _closeSession();
+    await _releaseProcess();
   }
 
   Future<void> stop() async {

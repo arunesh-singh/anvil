@@ -224,8 +224,10 @@ void main() {
   late Database db;
   late _ChainTool toolA;
   late _ChainTool toolB;
+  late _ChainTool toolG;
   late String inputPath;
   late String outAPath;
+  late String grayPath;
 
   setUp(() async {
     databaseFactory = databaseFactoryFfi;
@@ -244,11 +246,20 @@ void main() {
       outPath: p.join(tmp.path, 'b.pdf'),
       outName: 'b.pdf',
     );
+    // A single-input transform whose output shares the input extension, so the
+    // model can (wrongly) feed the result straight back in — the grayscale
+    // self-loop from the field log.
+    grayPath = p.join(tmp.path, 'gray.jpg');
+    toolG = _ChainTool(
+      meta: _meta('grayscale', const ['jpg']),
+      outPath: grayPath,
+      outName: 'gray.jpg',
+    );
 
     db = await _openChatDb();
     getIt.registerSingleton<ChatRepository>(ChatRepository(db));
     getIt.registerSingleton<HistoryRepository>(_FakeHistoryRepository());
-    getIt.registerSingleton<ToolRegistry>(ToolRegistry([toolA, toolB]));
+    getIt.registerSingleton<ToolRegistry>(ToolRegistry([toolA, toolB, toolG]));
     getIt.registerSingleton<ModelManager>(_FakeModelManager());
     // The controller holds the process up for the duration of a turn; on the
     // host there is no Android service behind the channel.
@@ -334,6 +345,48 @@ void main() {
     expect(msgs.where((m) => m.kind == ChatMessageKind.toolStep), hasLength(5));
     expect(msgs.last.text, contains('5-step limit'));
   });
+
+  test(
+    'a one-shot tool re-fed its own output ends the chain, not runs to the cap',
+    () async {
+      final gray = fnNameFor(toolG.meta);
+      // Step 1 grayscales the attachment; every later turn re-applies grayscale
+      // to its own fresh output — the degenerate loop from the field log. Five
+      // turns are scripted so a missing guard would run straight to the cap.
+      final loop = [
+        LlmToolCall(name: gray, args: {'file': grayPath}),
+      ];
+      final engine = wireEngine([
+        [
+          LlmToolCall(name: gray, args: {'file': inputPath}),
+        ],
+        loop,
+        loop,
+        loop,
+        loop,
+      ]);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(chatProvider.notifier);
+
+      await notifier.send('convert the image into greyscale');
+      await settle(container, (s) => !s.busy && s.messages.isNotEmpty);
+
+      final msgs = container.read(chatProvider).messages;
+      // Exactly one grayscale ran. The second turn (same tool over its own
+      // output) was recognised as a no-op and closed the chain.
+      expect(
+        msgs.where((m) => m.kind == ChatMessageKind.toolStep),
+        hasLength(1),
+      );
+      // Step-1 chat + the step-2 chat that emitted the repeat, then stop — no
+      // third turn, and nowhere near the five-step cap.
+      expect(engine.startChatCount, 2);
+      expect(msgs.last.kind, ChatMessageKind.text);
+      expect(msgs.last.text, contains('"gray.jpg"'));
+      expect(msgs.last.text, isNot(contains('5-step limit')));
+    },
+  );
 
   test(
     'a cold model does not swallow the turn: the question is on screen and '

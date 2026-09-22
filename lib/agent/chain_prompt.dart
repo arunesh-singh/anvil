@@ -39,6 +39,11 @@ class ChainStep {
   final String? outputName;
   final String? outputPath;
 
+  /// Qualified id (`<category>/<slug>`) of the tool that produced this step.
+  /// Used by the chain loop to detect a single-input tool being re-applied to
+  /// its own fresh output — a degenerate no-op loop the 2B model falls into.
+  final String? toolId;
+
   /// Inline text a step produced (OCR, image labels, a translation). Carried
   /// so a following step can use it — e.g. an identified name as a caption.
   final String? resultText;
@@ -46,6 +51,7 @@ class ChainStep {
     required this.toolLabel,
     this.outputName,
     this.outputPath,
+    this.toolId,
     this.resultText,
   });
 }
