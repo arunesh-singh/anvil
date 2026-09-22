@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateProvider;
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:anvil/core/app_log.dart';
 import 'package:anvil/core/di.dart';
@@ -178,6 +179,17 @@ final logEntriesProvider = FutureProvider<List<LogEntry>>(
 /// Entry/error tallies for the Settings row badge.
 final logCountsProvider = FutureProvider<({int total, int errors})>(
   (_) => getIt<LogRepository>().counts(),
+);
+
+/// App version name + build number for the Settings footer and license page.
+/// Read from the platform package metadata, which Flutter derives from
+/// pubspec's `version: <name>+<build>` at build time — so a pubspec bump shows
+/// up here with no code change.
+final appVersionProvider = FutureProvider<({String version, String build})>(
+  (_) async {
+    final info = await PackageInfo.fromPlatform();
+    return (version: info.version, build: info.buildNumber);
+  },
 );
 
 /// In-flight download state for one task: [fraction] in 0..1 (null = size

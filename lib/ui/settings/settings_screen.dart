@@ -12,10 +12,6 @@ import 'package:anvil/ui/settings/models_screen.dart';
 import 'package:anvil/ui/tokens.dart';
 import 'package:anvil/ui/widgets/slab.dart';
 
-/// Matches `pubspec.yaml`'s `version:`; shown in the footer and on the
-/// license page.
-const String _appVersion = '1.0.0';
-
 /// Settings-tab content: appearance, file retention, clear-all, the
 /// downloaded-models entry, diagnostics and licenses. Rendered inside
 /// [AppShell]; has no [Scaffold].
@@ -37,6 +33,12 @@ class SettingsScreen extends ConsumerWidget {
     final retention = ref.watch(retentionProvider);
     final cacheBytes = ref.watch(cacheBytesProvider);
     final counts = ref.watch(logCountsProvider);
+    final version = ref.watch(appVersionProvider).asData?.value;
+    // "1.0.0-rc.2 (5)" once resolved; the platform read is near-instant, so the
+    // brief null renders as a bare name.
+    final versionLabel = version == null
+        ? null
+        : '${version.version} (${version.build})';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -113,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => showLicensePage(
               context: context,
               applicationName: 'Anvil',
-              applicationVersion: _appVersion,
+              applicationVersion: versionLabel,
             ),
           ),
           const SizedBox(height: 22),
@@ -144,7 +146,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 22),
           Center(
             child: Text(
-              'Anvil $_appVersion \u00b7 ${getIt<ToolRegistry>().all.length} tools installed',
+              'Anvil${versionLabel == null ? '' : ' $versionLabel'} '
+              '\u00b7 ${getIt<ToolRegistry>().all.length} tools installed',
               style: AnvilText.mono(12, color: c.faintMono),
             ),
           ),
