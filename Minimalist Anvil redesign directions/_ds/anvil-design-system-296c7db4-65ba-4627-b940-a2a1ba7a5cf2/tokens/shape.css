@@ -1,16 +1,25 @@
-/* M3 shape scale. Anvil uses corner-medium for cards/tiles, corner-extra-small
-   for OutlineInputBorder fields, and corner-full for buttons and chips. */
+/* "Slab, resolved" radii (AnvilRadii, lib/ui/tokens.dart). Six values, all
+   generous: nothing in the app is square except the page itself, and nothing
+   is a pill — even buttons stop at 20px. */
 :root{
-  --corner-none:0px;
-  --corner-extra-small:4px;
-  --corner-small:8px;
-  --corner-medium:12px;
-  --corner-large:16px;
-  --corner-extra-large:28px;
-  --corner-full:9999px;
+  --radius-chip:12px;
+  --radius-control:14px;
+  --radius-search:16px;
+  --radius-row:18px;
+  --radius-button:20px;
+  --radius-panel:22px;
+  --radius-full:9999px;
 
-  --radius-card:var(--corner-medium);
-  --radius-field:var(--corner-extra-small);
-  --radius-button:var(--corner-full);
-  --radius-sheet:var(--corner-extra-large);
+  /* Material-shaped aliases */
+  --corner-none:0px;
+  --corner-extra-small:var(--radius-chip);
+  --corner-small:var(--radius-control);
+  --corner-medium:var(--radius-row);
+  --corner-large:var(--radius-button);
+  --corner-extra-large:var(--radius-panel);
+  --corner-full:var(--radius-full);
+
+  --radius-card:var(--radius-panel);
+  --radius-field:var(--radius-search);
+  --radius-sheet:var(--radius-panel);
 }

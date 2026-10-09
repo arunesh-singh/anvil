@@ -1,0 +1,10 @@
+<!-- @dsCard group="Brand" viewport="700x170" name="Motion" subtitle="Material defaults only — ripples, fades, platform page pushes" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>*{box-sizing:border-box}body{margin:0;padding:16px 20px;font-family:var(--font-sans);background:var(--anvil-bg);color:var(--anvil-on-surface)}</style></head><body>
+<style>@keyframes slide{0%,10%{transform:translateX(0)}50%,60%{transform:translateX(320px)}100%{transform:translateX(0)}}</style>
+<div style="display:flex;gap:24px;align-items:center">
+<div style="flex:1">
+<div style="height:32px;position:relative;background:var(--md-surface-container);border-radius:var(--corner-full);overflow:hidden"><div style="width:32px;height:32px;border-radius:var(--corner-full);background:var(--md-primary);animation:slide 2.4s var(--easing-standard) infinite"></div></div>
+<div style="font:var(--label-small);color:var(--md-on-surface-variant);margin-top:8px">standard · cubic-bezier(0.2, 0, 0, 1)</div>
+</div>
+<div style="flex:0 0 240px;font:var(--body-small);color:var(--md-on-surface-variant);line-height:18px">short-2 100ms · short-4 200ms<br>medium-2 300ms · long-2 500ms<br>No bounces, no springs, no scroll-linked motion.</div>
+</div></body></html>

@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"AnvilDesignSystem_296c7d","components":[{"name":"Button","sourcePath":"components/actions/Button.jsx"},{"name":"IconButton","sourcePath":"components/actions/IconButton.jsx"},{"name":"Banner","sourcePath":"components/feedback/Banner.jsx"},{"name":"CircularProgress","sourcePath":"components/feedback/CircularProgress.jsx"},{"name":"LinearProgress","sourcePath":"components/feedback/LinearProgress.jsx"},{"name":"Snackbar","sourcePath":"components/feedback/Snackbar.jsx"},{"name":"Icon","sourcePath":"components/icons/Icon.jsx"},{"name":"RadioTile","sourcePath":"components/inputs/RadioTile.jsx"},{"name":"TextField","sourcePath":"components/inputs/TextField.jsx"},{"name":"TopAppBar","sourcePath":"components/navigation/TopAppBar.jsx"},{"name":"Card","sourcePath":"components/surfaces/Card.jsx"},{"name":"ListTile","sourcePath":"components/surfaces/ListTile.jsx"},{"name":"ToolTile","sourcePath":"components/surfaces/ToolTile.jsx"}],"sourceHashes":{"components/actions/Button.jsx":"dc13df12f914","components/actions/IconButton.jsx":"c6ca3b924efc","components/feedback/Banner.jsx":"c6dd2cfdc17b","components/feedback/CircularProgress.jsx":"adfdb4459a18","components/feedback/LinearProgress.jsx":"ef437c09c83f","components/feedback/Snackbar.jsx":"41563ebc1e36","components/icons/Icon.jsx":"769dec2a898a","components/inputs/RadioTile.jsx":"e21f8c344d43","components/inputs/TextField.jsx":"893415af052f","components/navigation/TopAppBar.jsx":"dd505146af88","components/surfaces/Card.jsx":"a7d61896a612","components/surfaces/ListTile.jsx":"6de10b603a35","components/surfaces/ToolTile.jsx":"33059c626946","ui_kits/anvil-app/App.jsx":"c2bd89b79f6c","ui_kits/anvil-app/HistoryScreen.jsx":"de3184b55f0c","ui_kits/anvil-app/HomeScreen.jsx":"8e37682afa30","ui_kits/anvil-app/ResultScreen.jsx":"9558995e8e04","ui_kits/anvil-app/SettingsScreen.jsx":"7543d3b47e55","ui_kits/anvil-app/ToolScreen.jsx":"fac0344125bd","ui_kits/anvil-app/data.js":"bf3db236a6c5"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"AnvilDesignSystem_296c7d","components":[{"name":"Button","sourcePath":"components/actions/Button.jsx"},{"name":"IconButton","sourcePath":"components/actions/IconButton.jsx"},{"name":"IconChip","sourcePath":"components/actions/IconChip.jsx"},{"name":"Banner","sourcePath":"components/feedback/Banner.jsx"},{"name":"CircularProgress","sourcePath":"components/feedback/CircularProgress.jsx"},{"name":"InfoCard","sourcePath":"components/feedback/InfoCard.jsx"},{"name":"LinearProgress","sourcePath":"components/feedback/LinearProgress.jsx"},{"name":"ProgressRing","sourcePath":"components/feedback/ProgressRing.jsx"},{"name":"Snackbar","sourcePath":"components/feedback/Snackbar.jsx"},{"name":"Icon","sourcePath":"components/icons/Icon.jsx"},{"name":"RadioTile","sourcePath":"components/inputs/RadioTile.jsx"},{"name":"SegmentedControl","sourcePath":"components/inputs/SegmentedControl.jsx"},{"name":"StepperField","sourcePath":"components/inputs/StepperField.jsx"},{"name":"TextField","sourcePath":"components/inputs/TextField.jsx"},{"name":"TopAppBar","sourcePath":"components/navigation/TopAppBar.jsx"},{"name":"Card","sourcePath":"components/surfaces/Card.jsx"},{"name":"ListTile","sourcePath":"components/surfaces/ListTile.jsx"},{"name":"SectionEyebrow","sourcePath":"components/surfaces/SectionEyebrow.jsx"},{"name":"ToolRow","sourcePath":"components/surfaces/ToolRow.jsx"},{"name":"ToolTile","sourcePath":"components/surfaces/ToolTile.jsx"}],"sourceHashes":{"components/actions/Button.jsx":"220a49615dc6","components/actions/IconButton.jsx":"6f0fbdcb4ac1","components/actions/IconChip.jsx":"49dc6af204fc","components/feedback/Banner.jsx":"48bac5e84f84","components/feedback/CircularProgress.jsx":"db99dc249849","components/feedback/InfoCard.jsx":"097d0e8cc56b","components/feedback/LinearProgress.jsx":"ca348de7e4ad","components/feedback/ProgressRing.jsx":"46e5d323979d","components/feedback/Snackbar.jsx":"611fc7a7a310","components/icons/Icon.jsx":"769dec2a898a","components/inputs/RadioTile.jsx":"247e2978fb49","components/inputs/SegmentedControl.jsx":"d12e086a7946","components/inputs/StepperField.jsx":"16281ecab996","components/inputs/TextField.jsx":"6994c376fc1e","components/navigation/TopAppBar.jsx":"0a492148a89d","components/surfaces/Card.jsx":"56e378261ee8","components/surfaces/ListTile.jsx":"d99bc9fbcb28","components/surfaces/SectionEyebrow.jsx":"4ad18fa31415","components/surfaces/ToolRow.jsx":"c1fceeff3ac2","components/surfaces/ToolTile.jsx":"34a24e54c75e","ui_kits/anvil-app/App.jsx":"c2bd89b79f6c","ui_kits/anvil-app/HistoryScreen.jsx":"de3184b55f0c","ui_kits/anvil-app/HomeScreen.jsx":"8e37682afa30","ui_kits/anvil-app/ResultScreen.jsx":"9558995e8e04","ui_kits/anvil-app/SettingsScreen.jsx":"7543d3b47e55","ui_kits/anvil-app/ToolScreen.jsx":"fac0344125bd","ui_kits/anvil-app/data.js":"bf3db236a6c5"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -15,7 +15,7 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 function CircularProgress({
   size = 36,
   stroke = 4,
-  color = 'var(--md-primary)',
+  color = 'var(--anvil-accent)',
   style,
   ...rest
 }) {
@@ -32,7 +32,7 @@ function CircularProgress({
       display: 'block',
       width: '100%',
       height: '100%',
-      borderRadius: 'var(--corner-full)',
+      borderRadius: 'var(--radius-full)',
       border: stroke + 'px solid color-mix(in srgb, ' + color + ' 22%, transparent)',
       borderTopColor: color,
       animation: 'anvil-spin 1.1s linear infinite'
@@ -59,8 +59,8 @@ function LinearProgress({
       width: '100%',
       height: '4px',
       overflow: 'hidden',
-      borderRadius: 'var(--corner-full)',
-      background: 'var(--md-surface-container-highest)',
+      borderRadius: 'var(--radius-full)',
+      background: 'var(--anvil-accent-container)',
       ...style
     }
   }, rest), /*#__PURE__*/React.createElement("style", null, '@keyframes anvil-indeterminate{0%{left:-35%;right:100%}60%{left:100%;right:-90%}100%{left:100%;right:-90%}}'), /*#__PURE__*/React.createElement("div", {
@@ -68,7 +68,7 @@ function LinearProgress({
       position: 'absolute',
       top: 0,
       bottom: 0,
-      background: 'var(--md-primary)',
+      background: 'var(--anvil-accent)',
       animation: 'anvil-indeterminate 2s var(--easing-legacy) infinite'
     } : {
       position: 'absolute',
@@ -76,13 +76,98 @@ function LinearProgress({
       bottom: 0,
       left: 0,
       width: Math.max(0, Math.min(1, value)) * 100 + '%',
-      background: 'var(--md-primary)',
+      background: 'var(--anvil-accent)',
       transition: 'width var(--duration-medium-2) var(--easing-standard)'
     }
   }));
 }
 Object.assign(__ds_scope, { LinearProgress });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/feedback/LinearProgress.jsx", error: String((e && e.message) || e) }); }
+
+// components/feedback/ProgressRing.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** The 200px job ring: determinate when `value` is set, a rotating arc when
+ *  it is not. Centre label is the percentage, sub-label the progress message. */
+function ProgressRing({
+  value,
+  size = 200,
+  stroke = 14,
+  centerLabel,
+  subLabel,
+  style,
+  ...rest
+}) {
+  const indeterminate = value === undefined || value === null;
+  const r = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * r;
+  const frac = indeterminate ? 0.25 : Math.max(0, Math.min(1, value));
+  return /*#__PURE__*/React.createElement("div", _extends({
+    role: "progressbar",
+    style: {
+      position: 'relative',
+      width: size + 'px',
+      height: size + 'px',
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement("style", null, '@keyframes anvil-ring-spin{to{transform:rotate(360deg)}}'), /*#__PURE__*/React.createElement("svg", {
+    width: size,
+    height: size,
+    style: {
+      display: 'block',
+      transform: 'rotate(-90deg)',
+      animation: indeterminate ? 'anvil-ring-spin 1.2s linear infinite' : 'none',
+      transformOrigin: '50% 50%'
+    }
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: size / 2,
+    cy: size / 2,
+    r: r,
+    fill: "none",
+    stroke: "var(--anvil-accent-container)",
+    strokeWidth: stroke
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: size / 2,
+    cy: size / 2,
+    r: r,
+    fill: "none",
+    stroke: "var(--anvil-accent)",
+    strokeWidth: stroke,
+    strokeLinecap: "round",
+    strokeDasharray: circumference,
+    strokeDashoffset: circumference * (1 - frac),
+    style: {
+      transition: indeterminate ? 'none' : 'stroke-dashoffset var(--duration-medium-2) var(--easing-standard)'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      inset: stroke + 'px',
+      borderRadius: 'var(--radius-full)',
+      background: 'var(--anvil-bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '4px',
+      padding: '0 24px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: 'var(--headline-medium)',
+      letterSpacing: 'var(--headline-medium-tracking)',
+      color: 'var(--anvil-on-surface)'
+    }
+  }, centerLabel), subLabel ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: 'var(--body-medium)',
+      color: 'var(--anvil-muted)'
+    }
+  }, subLabel) : null));
+}
+Object.assign(__ds_scope, { ProgressRing });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/feedback/ProgressRing.jsx", error: String((e && e.message) || e) }); }
 
 // components/feedback/Snackbar.jsx
 try { (() => {
@@ -102,12 +187,10 @@ function Snackbar({
       gap: '8px',
       minHeight: '48px',
       padding: '8px 8px 8px 16px',
-      borderRadius: 'var(--corner-extra-small)',
-      background: 'var(--md-inverse-surface)',
-      color: 'var(--md-inverse-on-surface)',
-      boxShadow: 'var(--elevation-3)',
-      font: 'var(--body-medium)',
-      letterSpacing: 'var(--body-medium-tracking)',
+      borderRadius: 'var(--radius-control)',
+      background: 'var(--anvil-container-high)',
+      color: 'var(--anvil-on-surface)',
+      font: 'var(--body-large)',
       ...style
     }
   }, rest), /*#__PURE__*/React.createElement("span", {
@@ -120,12 +203,11 @@ function Snackbar({
     style: {
       border: 'none',
       background: 'transparent',
-      color: 'var(--md-inverse-primary)',
-      font: 'var(--label-large)',
-      letterSpacing: 'var(--label-large-tracking)',
-      padding: '0 8px',
-      height: '32px',
-      borderRadius: 'var(--corner-full)',
+      color: 'var(--anvil-accent-text)',
+      font: 'var(--title-small)',
+      padding: '0 10px',
+      height: '36px',
+      borderRadius: 'var(--radius-chip)',
       cursor: 'pointer'
     }
   }, action) : null);
@@ -176,55 +258,45 @@ Object.assign(__ds_scope, { Icon });
 // components/actions/Button.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-const VARIANTS = {
+const ANVIL_BUTTON_VARIANTS = {
   filled: {
-    background: 'var(--md-primary)',
-    color: 'var(--md-on-primary)',
-    border: 'none',
-    boxShadow: 'var(--elevation-0)'
+    background: 'var(--anvil-accent)',
+    color: 'var(--anvil-on-accent)'
+  },
+  neutral: {
+    background: 'var(--anvil-container)',
+    color: 'var(--anvil-on-surface)'
   },
   tonal: {
-    background: 'var(--md-secondary-container)',
-    color: 'var(--md-on-secondary-container)',
-    border: 'none',
-    boxShadow: 'var(--elevation-0)'
-  },
-  outlined: {
-    background: 'transparent',
-    color: 'var(--md-primary)',
-    border: '1px solid var(--md-outline)',
-    boxShadow: 'none'
+    background: 'var(--anvil-accent-container)',
+    color: 'var(--anvil-accent-text)'
   },
   text: {
     background: 'transparent',
-    color: 'var(--md-primary)',
-    border: 'none',
-    boxShadow: 'none'
-  },
-  elevated: {
-    background: 'var(--md-surface-container-low)',
-    color: 'var(--md-primary)',
-    border: 'none',
-    boxShadow: 'var(--elevation-1)'
+    color: 'var(--anvil-accent-text)'
   }
 };
 
-/** M3 common button. Anvil uses `filled` for Run/Share, `outlined` for
- *  Cancel/Pick file/Done, `text` for banner actions. */
+/** Slab action button. `filled` is the one primary action per screen (Run,
+ *  Share); `neutral` is the container-coloured secondary (Stop, Swap, Add).
+ *  `action` is the 60px full-bleed size the app uses at the foot of a screen. */
 function Button({
   variant = 'filled',
+  size = 'action',
   icon,
+  trailingIcon,
   children,
   disabled = false,
-  fullWidth = false,
+  fullWidth,
   onClick,
   style,
   ...rest
 }) {
   const [hover, setHover] = React.useState(false);
   const [active, setActive] = React.useState(false);
-  const v = VARIANTS[variant] || VARIANTS.filled;
-  const layer = disabled ? 0 : active ? 0.10 : hover ? 0.08 : 0;
+  const v = ANVIL_BUTTON_VARIANTS[variant] || ANVIL_BUTTON_VARIANTS.filled;
+  const layer = disabled ? 0 : active ? 0.1 : hover ? 0.08 : 0;
+  const stretch = fullWidth === undefined ? size === 'action' : fullWidth;
   return /*#__PURE__*/React.createElement("button", _extends({
     type: "button",
     disabled: disabled,
@@ -238,14 +310,15 @@ function Button({
     onMouseUp: () => setActive(false),
     style: {
       position: 'relative',
-      display: fullWidth ? 'flex' : 'inline-flex',
-      width: fullWidth ? '100%' : undefined,
+      display: stretch ? 'flex' : 'inline-flex',
+      width: stretch ? '100%' : undefined,
       alignItems: 'center',
       justifyContent: 'center',
       gap: '8px',
-      height: '40px',
-      padding: variant === 'text' ? '0 12px' : icon ? '0 24px 0 16px' : '0 24px',
-      borderRadius: 'var(--radius-button)',
+      border: 'none',
+      height: size === 'action' ? 'var(--action-height)' : 'var(--touch-target)',
+      padding: size === 'action' ? '0 24px' : '0 18px',
+      borderRadius: size === 'action' ? 'var(--radius-button)' : 'var(--radius-control)',
       font: 'var(--label-large)',
       letterSpacing: 'var(--label-large-tracking)',
       cursor: disabled ? 'default' : 'pointer',
@@ -253,10 +326,8 @@ function Button({
       WebkitTapHighlightColor: 'transparent',
       ...v,
       ...(disabled ? {
-        background: variant === 'filled' || variant === 'tonal' || variant === 'elevated' ? 'color-mix(in srgb, var(--md-on-surface) 12%, transparent)' : 'transparent',
-        color: 'color-mix(in srgb, var(--md-on-surface) 38%, transparent)',
-        border: variant === 'outlined' ? '1px solid color-mix(in srgb, var(--md-on-surface) 12%, transparent)' : v.border,
-        boxShadow: 'none'
+        background: variant === 'text' ? 'transparent' : 'var(--anvil-container-high)',
+        color: 'var(--anvil-hint)'
       } : null),
       ...style
     }
@@ -271,12 +342,18 @@ function Button({
     }
   }), icon ? /*#__PURE__*/React.createElement(__ds_scope.Icon, {
     name: icon,
-    size: 18
+    size: 20
   }) : null, /*#__PURE__*/React.createElement("span", {
     style: {
       position: 'relative'
     }
-  }, children));
+  }, children), trailingIcon ? /*#__PURE__*/React.createElement(__ds_scope.Icon, {
+    name: trailingIcon,
+    size: 20,
+    style: {
+      position: 'relative'
+    }
+  }) : null);
 }
 Object.assign(__ds_scope, { Button });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/actions/Button.jsx", error: String((e && e.message) || e) }); }
@@ -320,9 +397,9 @@ function IconButton({
       height: 'var(--touch-target)',
       padding: 0,
       border: 'none',
-      borderRadius: 'var(--corner-full)',
-      background: selected ? 'var(--md-secondary-container)' : 'transparent',
-      color: disabled ? 'color-mix(in srgb, var(--md-on-surface) 38%, transparent)' : selected ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)',
+      borderRadius: 'var(--radius-control)',
+      background: selected ? 'var(--anvil-accent-container)' : 'transparent',
+      color: disabled ? 'var(--anvil-faint)' : selected ? 'var(--anvil-accent-text)' : 'var(--anvil-icon-strong)',
       cursor: disabled ? 'default' : 'pointer',
       transition: 'var(--transition-state)',
       WebkitTapHighlightColor: 'transparent',
@@ -344,6 +421,81 @@ function IconButton({
 Object.assign(__ds_scope, { IconButton });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/actions/IconButton.jsx", error: String((e && e.message) || e) }); }
 
+// components/actions/IconChip.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** Rounded-square icon tile — the app's most repeated ornament: tool glyphs,
+ *  back buttons, row leadings. Accent-container by default, neutral when
+ *  `tone="neutral"`. */
+function IconChip({
+  icon,
+  tone = 'accent',
+  box = 40,
+  glyph = 20,
+  label,
+  onClick,
+  style,
+  ...rest
+}) {
+  const [hover, setHover] = React.useState(false);
+  const tones = {
+    accent: {
+      background: 'var(--anvil-accent-container)',
+      color: 'var(--anvil-accent-text)'
+    },
+    neutral: {
+      background: 'var(--anvil-container)',
+      color: 'var(--anvil-icon-strong)'
+    },
+    high: {
+      background: 'var(--anvil-container-high)',
+      color: 'var(--anvil-icon-strong)'
+    },
+    solid: {
+      background: 'var(--anvil-accent)',
+      color: 'var(--anvil-on-accent)'
+    }
+  };
+  return /*#__PURE__*/React.createElement("span", _extends({
+    role: onClick ? 'button' : undefined,
+    "aria-label": label,
+    title: label,
+    onClick: onClick,
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => setHover(false),
+    style: {
+      position: 'relative',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: '0 0 auto',
+      width: box + 'px',
+      height: box + 'px',
+      borderRadius: 'var(--radius-control)',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'var(--transition-state)',
+      ...(tones[tone] || tones.accent),
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      borderRadius: 'inherit',
+      background: 'currentColor',
+      opacity: onClick && hover ? 0.08 : 0
+    }
+  }), /*#__PURE__*/React.createElement(__ds_scope.Icon, {
+    name: icon,
+    size: glyph,
+    style: {
+      position: 'relative'
+    }
+  }));
+}
+Object.assign(__ds_scope, { IconChip });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/actions/IconChip.jsx", error: String((e && e.message) || e) }); }
+
 // components/feedback/Banner.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
@@ -360,16 +512,16 @@ function Banner({
       display: 'flex',
       alignItems: 'flex-start',
       gap: '16px',
-      padding: '16px 16px 8px 16px',
-      background: 'var(--md-surface)',
-      color: 'var(--md-on-surface)',
-      borderBottom: '1px solid var(--md-outline-variant)',
+      padding: '16px',
+      borderRadius: 'var(--radius-panel)',
+      background: 'var(--anvil-container)',
+      color: 'var(--anvil-on-surface)',
       ...style
     }
   }, rest), icon ? /*#__PURE__*/React.createElement(__ds_scope.Icon, {
     name: icon,
     size: 24,
-    color: "var(--md-on-surface-variant)",
+    color: "var(--anvil-accent)",
     style: {
       marginTop: '2px'
     }
@@ -380,8 +532,8 @@ function Banner({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      font: 'var(--body-medium)',
-      letterSpacing: 'var(--body-medium-tracking)'
+      font: 'var(--body-large)',
+      color: 'var(--anvil-muted)'
     }
   }, children), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -394,6 +546,46 @@ function Banner({
 }
 Object.assign(__ds_scope, { Banner });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/feedback/Banner.jsx", error: String((e && e.message) || e) }); }
+
+// components/feedback/InfoCard.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** Quiet informational card — accent glyph, muted body, on the info surface.
+ *  Used for offline/privacy notes and tool caveats. */
+function InfoCard({
+  icon = 'bolt',
+  children,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement("div", _extends({
+    style: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '12px',
+      padding: '16px',
+      borderRadius: 'var(--radius-panel)',
+      background: 'var(--anvil-info)',
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement(__ds_scope.Icon, {
+    name: icon,
+    size: 20,
+    color: "var(--anvil-accent)",
+    style: {
+      marginTop: '1px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0,
+      font: 'var(--body-large)',
+      color: 'var(--anvil-muted)'
+    }
+  }, children));
+}
+Object.assign(__ds_scope, { InfoCard });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/feedback/InfoCard.jsx", error: String((e && e.message) || e) }); }
 
 // components/inputs/RadioTile.jsx
 try { (() => {
@@ -409,7 +601,7 @@ function RadioTile({
   ...rest
 }) {
   const [hover, setHover] = React.useState(false);
-  const color = disabled ? 'color-mix(in srgb, var(--md-on-surface) 38%, transparent)' : selected ? 'var(--md-primary)' : 'var(--md-on-surface-variant)';
+  const color = disabled ? 'var(--anvil-faint)' : selected ? 'var(--anvil-accent)' : 'var(--anvil-muted)';
   return /*#__PURE__*/React.createElement("div", _extends({
     role: "radio",
     "aria-checked": selected,
@@ -424,7 +616,7 @@ function RadioTile({
       minHeight: '56px',
       padding: '0 16px',
       cursor: disabled ? 'default' : 'pointer',
-      color: 'var(--md-on-surface)',
+      color: 'var(--anvil-on-surface)',
       ...style
     }
   }, rest), /*#__PURE__*/React.createElement("span", {
@@ -439,7 +631,7 @@ function RadioTile({
       position: 'relative',
       width: '20px',
       height: '20px',
-      borderRadius: 'var(--corner-full)',
+      borderRadius: 'var(--radius-full)',
       border: '2px solid ' + color,
       display: 'inline-flex',
       alignItems: 'center',
@@ -450,7 +642,7 @@ function RadioTile({
     style: {
       width: '10px',
       height: '10px',
-      borderRadius: 'var(--corner-full)',
+      borderRadius: 'var(--radius-full)',
       background: color
     }
   }) : null), /*#__PURE__*/React.createElement("span", {
@@ -464,11 +656,134 @@ function RadioTile({
 Object.assign(__ds_scope, { RadioTile });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/inputs/RadioTile.jsx", error: String((e && e.message) || e) }); }
 
+// components/inputs/SegmentedControl.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** Two-to-three option segmented toggle — the method/mode switch on the PDF
+ *  tools. Selected segment is solid accent; the rest sit on the container. */
+function SegmentedControl({
+  options = [],
+  value,
+  onChange,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement("div", _extends({
+    style: {
+      display: 'flex',
+      gap: '8px',
+      ...style
+    }
+  }, rest), options.map(o => {
+    const val = typeof o === 'string' ? o : o.value;
+    const label = typeof o === 'string' ? o : o.label;
+    const selected = val === value;
+    return /*#__PURE__*/React.createElement("button", {
+      key: val,
+      type: "button",
+      onClick: () => onChange && onChange(val),
+      style: {
+        flex: 1,
+        minWidth: 0,
+        height: 'var(--control-height)',
+        border: 'none',
+        borderRadius: 'var(--radius-control)',
+        background: selected ? 'var(--anvil-accent)' : 'var(--anvil-container)',
+        color: selected ? 'var(--anvil-on-accent)' : 'var(--anvil-on-surface)',
+        font: 'var(--title-small)',
+        letterSpacing: 'var(--title-small-tracking)',
+        cursor: 'pointer',
+        transition: 'var(--transition-state)'
+      }
+    }, label);
+  }));
+}
+Object.assign(__ds_scope, { SegmentedControl });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/inputs/SegmentedControl.jsx", error: String((e && e.message) || e) }); }
+
+// components/inputs/StepperField.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** Labelled integer stepper — `[−] value [+]` inside a panel, with optional
+ *  helper text. Every numeric tool parameter uses this instead of a raw field. */
+function StepperField({
+  label,
+  value = 0,
+  min = 0,
+  max,
+  step = 1,
+  unit,
+  helperText,
+  onChange,
+  style,
+  ...rest
+}) {
+  const canDec = value > min;
+  const canInc = max === undefined || value < max;
+  const btn = (icon, enabled, tone, onClick) => /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    disabled: !enabled,
+    onClick: onClick,
+    style: {
+      width: 'var(--touch-target)',
+      height: 'var(--touch-target)',
+      border: 'none',
+      borderRadius: 'var(--radius-control)',
+      background: tone === 'accent' ? 'var(--anvil-accent)' : 'var(--anvil-container-high)',
+      color: enabled ? tone === 'accent' ? 'var(--anvil-on-accent)' : 'var(--anvil-on-surface)' : 'var(--anvil-faint)',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: enabled ? 'pointer' : 'default'
+    }
+  }, /*#__PURE__*/React.createElement(__ds_scope.Icon, {
+    name: icon,
+    size: 20
+  }));
+  return /*#__PURE__*/React.createElement("div", _extends({
+    style: {
+      padding: '16px',
+      borderRadius: 'var(--radius-panel)',
+      background: 'var(--anvil-container)',
+      color: 'var(--anvil-on-surface)',
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      minWidth: 0,
+      font: 'var(--title-small)',
+      letterSpacing: 'var(--title-small-tracking)'
+    }
+  }, label), btn('remove', canDec, 'neutral', () => canDec && onChange && onChange(value - step)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: '56px',
+      textAlign: 'center',
+      font: 'var(--title-medium)',
+      letterSpacing: 'var(--title-medium-tracking)'
+    }
+  }, value, unit || ''), btn('add', canInc, 'accent', () => canInc && onChange && onChange(value + step))), helperText ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: '8px',
+      font: 'var(--body-medium)',
+      color: 'var(--anvil-muted)'
+    }
+  }, helperText) : null);
+}
+Object.assign(__ds_scope, { StepperField });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/inputs/StepperField.jsx", error: String((e && e.message) || e) }); }
+
 // components/inputs/TextField.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/** Outlined text field — Flutter's `InputDecoration(border: OutlineInputBorder())`,
- *  the only field style Anvil uses (search + every tool param). */
+/** Filled text field — Slab's only field style: container fill, 16px radius,
+ *  no resting outline, a 2px accent ring on focus. */
 function TextField({
   label,
   hint,
@@ -478,6 +793,8 @@ function TextField({
   error,
   helperText,
   type = 'text',
+  multiline = false,
+  rows = 4,
   onChange,
   style,
   ...rest
@@ -485,8 +802,9 @@ function TextField({
   const [focus, setFocus] = React.useState(false);
   const [inner, setInner] = React.useState(defaultValue ?? '');
   const val = value !== undefined ? value : inner;
-  const floated = focus || String(val ?? '').length > 0;
-  const line = error ? 'var(--md-error)' : focus ? 'var(--md-primary)' : 'var(--md-outline)';
+  const filled = String(val ?? '').length > 0;
+  const showLabel = label && (focus || filled);
+  const Field = multiline ? 'textarea' : 'input';
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -496,39 +814,44 @@ function TextField({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      position: 'relative',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: multiline ? 'flex-start' : 'center',
       gap: '12px',
       minHeight: '56px',
-      padding: prefixIcon ? '0 16px 0 12px' : '0 16px',
-      borderRadius: 'var(--radius-field)',
-      border: (focus ? '2px solid ' : '1px solid ') + line,
-      background: 'transparent',
+      padding: showLabel ? '8px 16px' : '0 16px',
+      borderRadius: 'var(--radius-search)',
+      background: 'var(--anvil-container)',
+      boxShadow: focus ? 'inset 0 0 0 2px var(--anvil-accent)' : error ? 'inset 0 0 0 2px var(--anvil-error)' : 'none',
       transition: 'var(--transition-state)'
     }
   }, prefixIcon ? /*#__PURE__*/React.createElement(__ds_scope.Icon, {
     name: prefixIcon,
-    size: 24,
-    color: "var(--md-on-surface-variant)"
-  }) : null, label ? /*#__PURE__*/React.createElement("span", {
+    size: 22,
+    color: "var(--anvil-hint)",
     style: {
-      position: 'absolute',
-      left: prefixIcon ? '48px' : '16px',
-      top: floated ? '-8px' : '50%',
-      transform: floated ? 'none' : 'translateY(-50%)',
-      padding: floated ? '0 4px' : 0,
-      background: floated ? 'var(--md-surface)' : 'transparent',
-      font: floated ? 'var(--body-small)' : 'var(--body-large)',
-      letterSpacing: floated ? 'var(--body-small-tracking)' : 'var(--body-large-tracking)',
-      color: error ? 'var(--md-error)' : focus ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
-      pointerEvents: 'none',
-      transition: 'all var(--duration-short-4) var(--easing-standard)'
+      marginTop: multiline ? '10px' : 0
     }
-  }, label) : null, /*#__PURE__*/React.createElement("input", _extends({
-    type: type,
+  }) : null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      padding: showLabel ? 0 : '8px 0'
+    }
+  }, showLabel ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: 'var(--label-small)',
+      letterSpacing: 'var(--label-small-tracking)',
+      textTransform: 'uppercase',
+      color: error ? 'var(--anvil-error)' : focus ? 'var(--anvil-accent-text)' : 'var(--anvil-muted)'
+    }
+  }, label) : null, /*#__PURE__*/React.createElement(Field, _extends({
+    type: multiline ? undefined : type,
+    rows: multiline ? rows : undefined,
     value: val,
-    placeholder: label && !floated ? '' : hint,
+    placeholder: hint || label,
     onFocus: () => setFocus(true),
     onBlur: () => setFocus(false),
     onChange: e => {
@@ -536,21 +859,19 @@ function TextField({
       onChange && onChange(e);
     },
     style: {
-      flex: 1,
-      minWidth: 0,
+      width: '100%',
       border: 'none',
       outline: 'none',
+      resize: multiline ? 'vertical' : undefined,
       background: 'transparent',
-      font: 'var(--body-large)',
-      letterSpacing: 'var(--body-large-tracking)',
-      color: 'var(--md-on-surface)',
+      font: multiline ? 'var(--mono-medium)' : 'var(--body-large)',
+      color: 'var(--anvil-on-surface)',
       padding: 0
     }
-  }, rest))), helperText ? /*#__PURE__*/React.createElement("span", {
+  }, rest)))), helperText ? /*#__PURE__*/React.createElement("span", {
     style: {
-      font: 'var(--body-small)',
-      letterSpacing: 'var(--body-small-tracking)',
-      color: error ? 'var(--md-error)' : 'var(--md-on-surface-variant)',
+      font: 'var(--body-medium)',
+      color: error ? 'var(--anvil-error)' : 'var(--anvil-muted)',
       paddingLeft: '16px'
     }
   }, helperText) : null);
@@ -573,22 +894,19 @@ function TopAppBar({
     style: {
       display: 'flex',
       alignItems: 'center',
-      gap: '4px',
+      gap: '14px',
       height: 'var(--appbar-height)',
-      padding: '0 4px',
-      background: 'var(--md-surface)',
-      color: 'var(--md-on-surface)',
+      padding: '0 var(--screen-padding)',
+      background: 'transparent',
+      color: 'var(--anvil-on-surface)',
       ...style
     }
-  }, rest), onBack ? /*#__PURE__*/React.createElement(__ds_scope.IconButton, {
+  }, rest), onBack ? /*#__PURE__*/React.createElement(__ds_scope.IconChip, {
     icon: "arrow_back",
+    tone: "neutral",
     label: "Back",
     onClick: onBack
-  }) : /*#__PURE__*/React.createElement("span", {
-    style: {
-      width: '12px'
-    }
-  }), /*#__PURE__*/React.createElement("h1", {
+  }) : null, /*#__PURE__*/React.createElement("h1", {
     style: {
       flex: 1,
       margin: 0,
@@ -602,7 +920,7 @@ function TopAppBar({
     style: {
       display: 'flex',
       alignItems: 'center',
-      gap: '0px'
+      gap: '8px'
     }
   }, actions));
 }
@@ -612,10 +930,12 @@ Object.assign(__ds_scope, { TopAppBar });
 // components/surfaces/Card.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/** M3 card: tinted surface container + level-1 shadow, 12px corners. */
+/** Slab panel: a flat tinted container at the 22px panel radius. Depth is
+ *  tint, never shadow — level 1 is the container colour, level 3 the raised one. */
 function Card({
   level = 1,
   interactive = false,
+  radius = 'var(--radius-panel)',
   onClick,
   children,
   style,
@@ -630,9 +950,8 @@ function Card({
       position: 'relative',
       overflow: 'hidden',
       background: 'var(--surface-level-' + level + ')',
-      color: 'var(--md-on-surface)',
-      borderRadius: 'var(--radius-card)',
-      boxShadow: 'var(--elevation-' + level + ')',
+      color: 'var(--anvil-on-surface)',
+      borderRadius: radius,
       cursor: interactive ? 'pointer' : 'default',
       transition: 'var(--transition-state)',
       ...style
@@ -642,7 +961,7 @@ function Card({
       position: 'absolute',
       inset: 0,
       background: 'currentColor',
-      opacity: hover ? 0.08 : 0,
+      opacity: hover ? 0.06 : 0,
       pointerEvents: 'none'
     }
   }) : null, children);
@@ -678,7 +997,7 @@ function ListTile({
       gap: '16px',
       minHeight: minHeight + 'px',
       padding: lines > 1 ? '12px 16px' : '0 16px',
-      color: 'var(--md-on-surface)',
+      color: 'var(--anvil-on-surface)',
       cursor: onClick ? 'pointer' : 'default',
       ...style
     }
@@ -693,7 +1012,7 @@ function ListTile({
   }) : null, leadingIcon ? /*#__PURE__*/React.createElement(__ds_scope.Icon, {
     name: leadingIcon,
     size: 24,
-    color: "var(--md-on-surface-variant)",
+    color: "var(--anvil-icon-strong)",
     style: {
       position: 'relative',
       marginTop: lines > 1 ? '2px' : 0
@@ -706,14 +1025,14 @@ function ListTile({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      font: 'var(--body-large)',
-      letterSpacing: 'var(--body-large-tracking)'
+      font: 'var(--title-small)',
+      letterSpacing: 'var(--title-small-tracking)'
     }
   }, title), subtitle ? /*#__PURE__*/React.createElement("div", {
     style: {
       font: 'var(--body-medium)',
       letterSpacing: 'var(--body-medium-tracking)',
-      color: 'var(--md-on-surface-variant)',
+      color: 'var(--anvil-muted)',
       whiteSpace: 'pre-line'
     }
   }, subtitle) : null), trailing ? /*#__PURE__*/React.createElement("div", {
@@ -727,6 +1046,125 @@ function ListTile({
 }
 Object.assign(__ds_scope, { ListTile });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/surfaces/ListTile.jsx", error: String((e && e.message) || e) }); }
+
+// components/surfaces/SectionEyebrow.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** Letter-spaced 11px section label, optionally with a leading glyph. The only
+ *  uppercase type in the system. */
+function SectionEyebrow({
+  children,
+  icon,
+  tone = 'muted',
+  style,
+  ...rest
+}) {
+  const color = tone === 'accent' ? 'var(--anvil-accent-text)' : 'var(--anvil-muted)';
+  return /*#__PURE__*/React.createElement("div", _extends({
+    style: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      color,
+      ...style
+    }
+  }, rest), icon ? /*#__PURE__*/React.createElement(__ds_scope.Icon, {
+    name: icon,
+    size: 15
+  }) : null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: 'var(--label-small)',
+      letterSpacing: '1px',
+      textTransform: 'uppercase'
+    }
+  }, children));
+}
+Object.assign(__ds_scope, { SectionEyebrow });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/surfaces/SectionEyebrow.jsx", error: String((e && e.message) || e) }); }
+
+// components/surfaces/ToolRow.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** Tappable container row: icon chip, title, subtitle, trailing chevron.
+ *  The workhorse of Home, Browse and My Files. */
+function ToolRow({
+  icon,
+  leading,
+  title,
+  subtitle,
+  mono = false,
+  trailing,
+  onClick,
+  style,
+  ...rest
+}) {
+  const [hover, setHover] = React.useState(false);
+  return /*#__PURE__*/React.createElement("div", _extends({
+    onClick: onClick,
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => setHover(false),
+    style: {
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '14px',
+      padding: '13px 16px',
+      borderRadius: 'var(--radius-row)',
+      background: 'var(--anvil-container)',
+      color: 'var(--anvil-on-surface)',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'var(--transition-state)',
+      ...style
+    }
+  }, rest), onClick ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      borderRadius: 'inherit',
+      background: 'currentColor',
+      opacity: hover ? 0.06 : 0,
+      pointerEvents: 'none'
+    }
+  }) : null, leading || (icon ? /*#__PURE__*/React.createElement(__ds_scope.IconChip, {
+    icon: icon
+  }) : null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative',
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: 'var(--title-small)',
+      letterSpacing: 'var(--title-small-tracking)',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap'
+    }
+  }, title), subtitle ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: '2px',
+      font: mono ? 'var(--mono-small)' : 'var(--body-medium)',
+      color: 'var(--anvil-muted)',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap'
+    }
+  }, subtitle) : null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px'
+    }
+  }, trailing === undefined ? /*#__PURE__*/React.createElement(__ds_scope.Icon, {
+    name: "chevron_right",
+    size: 20,
+    color: "var(--anvil-hint)"
+  }) : trailing));
+}
+Object.assign(__ds_scope, { ToolRow });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/surfaces/ToolRow.jsx", error: String((e && e.message) || e) }); }
 
 // components/surfaces/ToolTile.jsx
 try { (() => {
@@ -742,6 +1180,7 @@ function ToolTile({
   return /*#__PURE__*/React.createElement(__ds_scope.Card, _extends({
     interactive: true,
     onClick: onClick,
+    radius: "var(--radius-row)",
     style: {
       aspectRatio: 'var(--tool-tile-aspect)',
       ...style
@@ -750,18 +1189,16 @@ function ToolTile({
     style: {
       display: 'flex',
       alignItems: 'center',
-      gap: '12px',
+      gap: '14px',
       height: '100%',
       padding: 'var(--tile-padding)'
     }
-  }, /*#__PURE__*/React.createElement(__ds_scope.Icon, {
-    name: icon,
-    size: 24,
-    color: "var(--md-on-surface-variant)"
+  }, /*#__PURE__*/React.createElement(__ds_scope.IconChip, {
+    icon: icon
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      font: 'var(--title-medium)',
-      letterSpacing: 'var(--title-medium-tracking)',
+      font: 'var(--title-small)',
+      letterSpacing: 'var(--title-small-tracking)',
       overflow: 'hidden',
       textOverflow: 'ellipsis'
     }
@@ -1585,17 +2022,27 @@ __ds_ns.Button = __ds_scope.Button;
 
 __ds_ns.IconButton = __ds_scope.IconButton;
 
+__ds_ns.IconChip = __ds_scope.IconChip;
+
 __ds_ns.Banner = __ds_scope.Banner;
 
 __ds_ns.CircularProgress = __ds_scope.CircularProgress;
 
+__ds_ns.InfoCard = __ds_scope.InfoCard;
+
 __ds_ns.LinearProgress = __ds_scope.LinearProgress;
+
+__ds_ns.ProgressRing = __ds_scope.ProgressRing;
 
 __ds_ns.Snackbar = __ds_scope.Snackbar;
 
 __ds_ns.Icon = __ds_scope.Icon;
 
 __ds_ns.RadioTile = __ds_scope.RadioTile;
+
+__ds_ns.SegmentedControl = __ds_scope.SegmentedControl;
+
+__ds_ns.StepperField = __ds_scope.StepperField;
 
 __ds_ns.TextField = __ds_scope.TextField;
 
@@ -1604,6 +2051,10 @@ __ds_ns.TopAppBar = __ds_scope.TopAppBar;
 __ds_ns.Card = __ds_scope.Card;
 
 __ds_ns.ListTile = __ds_scope.ListTile;
+
+__ds_ns.SectionEyebrow = __ds_scope.SectionEyebrow;
+
+__ds_ns.ToolRow = __ds_scope.ToolRow;
 
 __ds_ns.ToolTile = __ds_scope.ToolTile;
 

@@ -1,0 +1,26 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Surfaces" subtitle="Panels, tool tiles, container rows, list tiles and the section eyebrow" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>*{box-sizing:border-box}body{margin:0;padding:16px 20px;background:var(--anvil-bg);color:var(--anvil-on-surface);font-family:var(--font-sans)}.lbl{font:var(--label-small);letter-spacing:1px;text-transform:uppercase;color:var(--anvil-muted);margin-bottom:8px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.cols{display:flex;gap:20px;align-items:flex-start}a{color:var(--anvil-accent-text)}a:hover{color:var(--anvil-accent)}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const { Card, ToolTile, ToolRow, ListTile, SectionEyebrow, IconChip } = window.AnvilDesignSystem_296c7d;
+function Demo(){return (<div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
+<div><SectionEyebrow icon="bolt">On this device</SectionEyebrow>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginTop:'8px'}}>
+<ToolTile icon="merge" label="Merge PDFs"/><ToolTile icon="call_split" label="Split PDF"/><ToolTile icon="compress" label="Compress PDF"/>
+</div></div>
+<div className="cols">
+<div style={{flex:1,display:'flex',flexDirection:'column',gap:'8px'}}><div className="lbl">ROWS</div>
+<ToolRow icon="picture_as_pdf" title="quarterly-report.pdf" subtitle="48 pages · 12.4 MB" mono onClick={()=>{}}/>
+<ToolRow icon="history" title="Compress PDF" subtitle="2026-09-14 14:02" onClick={()=>{}}/>
+</div>
+<div style={{flex:'0 0 240px'}}><div className="lbl">PANEL + LIST TILE</div>
+<Card level={1}><ListTile leadingIcon="insert_drive_file" title="report_1.pdf" subtitle="3.1 MB" trailing={<IconChip icon="save_alt" tone="high" label="Save"/>}/></Card>
+</div></div>
+</div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script></body></html>

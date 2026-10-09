@@ -16,7 +16,7 @@ a workbench, not a destination.
 | Source | Path / link | What was taken from it |
 | --- | --- | --- |
 | Anvil codebase (Flutter/Dart) | mounted local folder `anvil/` | Every value in this system. Theme seed, screens, widget inventory, tool labels, icon ligatures, copy. |
-| `anvil/lib/ui/theme.dart` | — | The single brand seed `#3D5AFE`; `ThemeData(useMaterial3: true)` |
+| `lib/ui/tokens.dart`, `theme.dart`, `widgets/slab.dart` | github.com/arunesh-singh/anvil | The "Slab, resolved" palette, type scale, radii and widget inventory |
 | `anvil/lib/ui/**` | `home_screen.dart`, `generic_tool_screen.dart`, `progress_view.dart`, `result_screen.dart`, `history_screen.dart`, `settings_screen.dart` | Screen layouts, spacing, component inventory |
 | `anvil/lib/tools/**/*.dart` | `pdf_tools.dart`, `image_native_tools.dart`, `video_tools.dart`, `converter_tools.dart`, `write_tools.dart` | Tool labels, descriptions, parameter labels, Material Icons ligature names |
 | `anvil/README.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `TOOL_CATALOG.md` | — | Product context and voice |
@@ -29,70 +29,62 @@ No Figma file, no slide deck, no brand book, and **no logo** was provided. See
 
 ## VISUAL FOUNDATIONS
 
-Anvil's visual language is **Material 3 (Material You), unmodified**, generated from one
-seed colour. `theme.dart` is fourteen lines: `ColorScheme.fromSeed(seedColor: 0xFF3D5AFE)`
-for light and dark. Everything here is the honest expansion of that — not an
-interpretation of it. When a value looks like "just Material," that is correct and
-intentional; do not stylise it.
+Anvil's visual language is **"Slab, resolved"** — the app's own look, defined in
+`lib/ui/tokens.dart`, `theme.dart` and `widgets/slab.dart`. It replaced the stock
+Material 3 / Roboto theme the app shipped in its first phase: Material is still the
+substrate (ripples, `MaterialPageRoute`, Material Icons), but every colour, radius and
+type step is now hand-picked. Flat, rounded, quiet, with exactly one saturated colour.
 
-**Colour.** One seed, `#3D5AFE` — a saturated electric indigo. All roles derive from it
-via `material-color-utilities` tonal palettes (primary tones use the seed's own chroma;
-secondary chroma 16, tertiary chroma 24 at hue +60, neutrals chroma 4/8). Light primary
-lands at `#2848EE` (tone 40), dark primary at `#BBC3FF` (tone 80). Secondary is a muted
-blue-grey, tertiary a dusty mauve-pink — both are container colours, never actions.
-Error `#BA1A1A` is the only status colour in the system: there is **no success green, no
-warning amber**, because a finished job navigates to a Result screen instead of turning
-something green. Backgrounds are near-white with the faintest violet cast
-(`#FFFBFF` surface, `#F6F2F7`–`#E4E1E6` containers) — never pure `#FFF` for a raised
-surface, never a grey with a cool blue cast.
+**Colour.** Fifteen roles, light and dark, hand-picked rather than generated from a seed.
+The accent is `#4D67FF` and does not shift between schemes; only its text variant
+lightens (`#3346D6` light → `#8FA0FF` dark) to stay legible on containers. The page is
+grey (`#F3F3F6`) and panels are white (`#FFFFFF`) — the inverse of the old
+near-white-page scheme, and in dark `#16171A` page / `#1F2126` panel. Neutrals are
+cool but untinted: no violet cast anywhere. Text has four levels —
+on-surface `#1A1B1E`, muted `#565A61`, hint `#83888F`, faint `#A8ACB3`. Error
+`#BA1A1A` is still the only status colour: **no success green, no warning amber**,
+because a finished job navigates to a Result screen.
 
-**Type.** Roboto at every size — the Flutter/Android default; there is no display or
-brand face. The full M3 2021 type scale is tokenised, but the app itself only uses five
-steps: title-large (22) for app bars, title-medium (16/500) for tool tiles, title-small
-(14/500) for category headers, body-large (16) for descriptions and field text,
-body-medium (14) for subtitles and metadata, label-large (14/500) for buttons. Tracking
-is positive on body sizes (0.25–0.5px) and negative only on display-large. Roboto Mono
-is reserved for filenames, page specs and tool output.
+**Type.** **Space Grotesk** for everything, **JetBrains Mono** for filenames, sizes,
+page specs and tool output — both bundled with the app. Eight steps do all the work:
+headline-medium (30/700) for tool titles and the progress percentage, headline-small (25),
+title-large (21/700) for editor headers, title-medium (18/600), title-small (15/600) for
+rows, panels and buttons, body-large (15) for descriptions, body-medium (13) for
+metadata, label-small (11/600, +1 tracking, uppercase) for section eyebrows — the only
+uppercase type in the system. Tracking is **negative** and tightens as size grows
+(-0.1 at 15px, -1.0 at 30px). Roboto is gone.
 
-**Spacing & layout.** A 4px base, but only five values do real work: 4, 8, 12, 16, 24.
-`16px` is screen padding, `12px` is list/tile padding, `8px` is the grid gutter.
-The home grid is fixed at two columns with a `2.4:1` tile aspect ratio — never one column,
-never three. Layout is a single scrolling column under a fixed 64px app bar; there is no
-bottom navigation, no drawer, no tab bar, no floating action button, no sticky footer.
-The primary action (`Run`, `Share`) sits at the bottom of the content column, full-width.
+**Spacing & layout.** 20px screen gutter, 16px panel padding, 14px default stack gap,
+10px thumbnail-grid gutter, 8px between adjacent controls. Controls are 44px, fields and
+segments 48px, the one primary action per screen is **60px, full-width, at the foot of
+the column**. Layout is a single scrolling column; no bottom navigation, no drawer, no
+tab bar, no FAB.
 
-**Corners.** Fields 4px, cards and tiles 12px, bottom sheets 28px, buttons and chips
-fully rounded. Nothing is square except the app bar and full-bleed dividers.
+**Corners.** Six radii, all generous, nothing square and nothing a pill: chip 12,
+control and icon chip 14, search field 16, row 18, action button 20, panel 22.
 
-**Cards.** A card is a *tinted surface plus a shadow pair*, never a border. Level 1 is
-`--md-surface-container-low` with `0 1px 2px rgba(0,0,0,.3), 0 1px 3px 1px rgba(0,0,0,.15)`,
-12px radius, contents clipped to the corner. Elevation moves the tint and the shadow
-together. There are no outlined cards, no coloured left rails, no gradient fills.
+**Panels.** A panel is a *flat tinted container* — no border, no shadow. Level 1 is
+`--anvil-container` at 22px; a raised element (stepper button, snackbar, disabled
+action) moves to `--anvil-container-high`. **There are no shadows anywhere in the app**;
+`--elevation-1…5` resolve to `none`.
 
 **Backgrounds & imagery.** There are none. No photography, no illustration, no pattern,
-no texture, no gradient, no grain. Every surface is a flat colour token. When a screen
-has nothing to show it says so in plain body text, centred — "No tools match.",
-"No history yet." — with no empty-state artwork. If you need an image in a marketing
-context, that decision has not been made yet; ask before inventing one.
+no texture, no gradient, no grain. Every surface is a flat colour token. Empty states are
+plain body text, centred — "No tools match.", "No history yet." — with no artwork.
 
-**Transparency & blur.** Used only for state layers and disabled states. There is no
-frosted glass, no scrim over content except the standard modal scrim (`#000000`), and no
-protection gradients — text always sits on a solid token.
+**Transparency & blur.** Used only for state layers, disabled states and the modal scrim
+behind the full-page zoom viewer. No frosted glass, no protection gradients.
 
-**Borders.** A 1px `--md-outline` on text fields (2px `--md-primary` on focus) and a 1px
-`--md-outline-variant` hairline under banners. That is the whole border system.
+**Borders.** Effectively none. A focused field draws a 2px `--anvil-accent` inset ring;
+a page marked for deletion draws a 2px `--anvil-error` outline. Nothing else is stroked.
 
 **Motion.** Material defaults, nothing bespoke. Standard easing `cubic-bezier(0.2,0,0,1)`;
 durations 100/200/300/500ms. Ripples on every tap target. Screen changes are the platform
-`MaterialPageRoute` push. **No bounces, no springs, no parallax, no scroll-linked
-animation, no entrance choreography.**
+`MaterialPageRoute` push. **No bounces, no springs, no parallax, no entrance choreography.**
 
 **Interaction states.** State layers only — a translucent wash of the *content* colour at
-the M3 opacities: hover 8%, focus 10%, pressed 10%, dragged 16%. A pressed button never
-shrinks, never darkens to a different hex, never changes hue. Disabled is 38% content on
-a 12% container, never a grey swatch.
-
----
+hover 8%, focus 10%, pressed 10%, dragged 16%. A pressed button never shrinks, never
+changes hue. Disabled is `--anvil-hint` content on a `--anvil-container-high` container.
 
 ## CONTENT FUNDAMENTALS
 
@@ -151,8 +143,7 @@ and every one of those maps 1:1 to a ligature in the web `Material Icons` font.
   nothing to copy into `assets/`, and `assets/` is therefore empty by design.
 - **Size:** 24px everywhere — app-bar actions, tool tiles, list-tile leading slots,
   banner leading. 18px inside a button label. Never larger than 32px.
-- **Colour:** `--md-on-surface-variant` by default. Icons inside a filled button inherit
-  the button's `on-` colour. Only destructive affordances use `--md-error`.
+- **Colour:** `--anvil-icon-strong` by default, `--anvil-muted` for subtitles. Icons inside a filled button inherit the button's `on-` colour; inside an icon chip, `--anvil-accent-text`. Only destructive affordances use `--md-error`.
 - **Filled set only.** The base `Material Icons` webfont carries no `_outlined`, `_rounded`
   or `_sharp` variants — those Dart constants render as literal text if passed straight
   through. Map them to the filled ligature: `Icons.circle_outlined` → `panorama_fish_eye`,
@@ -167,8 +158,8 @@ and every one of those maps 1:1 to a ligature in the web `Material Icons` font.
 
 **Anvil has no logo.** The sources contain no wordmark, app icon, or brand illustration —
 `AppBar(title: Text('Anvil'))` is the entire brand expression, and the app still runs the
-default Flutter launcher icon. Wherever a mark would go, set the word **Anvil** in Roboto
-Medium, tight tracking, in `--md-on-surface` or white on `--anvil-seed`. Nothing in this
+default Flutter launcher icon. Wherever a mark would go, set the word **Anvil** in Space Grotesk
+Bold, tight tracking, in `--anvil-on-surface` or white on `--anvil-accent`. Nothing in this
 system attempts to reconstruct or invent a mark. If a real logo exists, drop it into
 `assets/` and replace the wordmark card.
 
@@ -180,32 +171,32 @@ system attempts to reconstruct or invent a mark. If a real logo exists, drop it 
 - `styles.css` — the single entry point consumers link. `@import` lines only.
 - `thumbnail.html` — homepage tile.
 - `SKILL.md` — Agent Skills front matter for use in Claude Code.
+- `github.md` — the source repository this system tracks.
 - `readme.md` — this file.
 
 ### `tokens/`
-`fonts.css` (Roboto, Roboto Mono, Material Icons) · `colors.css` (six tonal palettes,
-light + dark semantic roles) · `typography.css` (M3 type scale) · `shape.css` ·
-`elevation.css` · `spacing.css` · `motion.css` · `state.css`
+`fonts.css` (Space Grotesk, JetBrains Mono, Material Icons) · `colors.css` (fifteen
+`--anvil-*` roles light + dark, plus `--md-*` aliases for Material-shaped consumers) ·
+`typography.css` · `shape.css` · `elevation.css` (all `none`) · `spacing.css` ·
+`motion.css` · `state.css`
 
 ### Components — `components/`
-Every family below is one the Anvil source actually uses; nothing was added for
-completeness.
 
 | Group | Components |
 | --- | --- |
-| `components/actions/` | **Button**, **IconButton** |
-| `components/inputs/` | **TextField**, **RadioTile** |
-| `components/surfaces/` | **Card**, **ListTile**, **ToolTile** |
-| `components/feedback/` | **LinearProgress**, **CircularProgress**, **Banner**, **Snackbar** |
+| `components/actions/` | **Button**, **IconButton**, **IconChip** |
+| `components/inputs/` | **TextField**, **SegmentedControl**, **StepperField**, **RadioTile** |
+| `components/surfaces/` | **Card**, **ToolRow**, **ToolTile**, **ListTile**, **SectionEyebrow** |
+| `components/feedback/` | **ProgressRing**, **LinearProgress**, **CircularProgress**, **InfoCard**, **Banner**, **Snackbar** |
 | `components/navigation/` | **TopAppBar** |
 | `components/icons/` | **Icon** |
 
-**Intentional additions (2).**
-- **Icon** — a thin wrapper over the Material Icons ligature font. The codebase uses
-  Flutter's built-in `Icon(IconData)`, which has no web equivalent; consumers need one.
-- **ToolTile** — the home grid's tile is a private `_ToolTile` widget in
-  `home_screen.dart`. It is promoted to a named component because it is the app's most
-  repeated unit.
+Every one is a widget the Slab source actually uses: **IconChip**, **ToolRow**,
+**SectionEyebrow**, **StepperField**, **InfoCard** and **ProgressRing** are the web
+equivalents of `slab.dart`'s `IconChip`, `ToolRow`, `SectionEyebrow`, `StepperField`,
+`InfoCard` and `CircularPercent`; **SegmentedControl** is the method switch in
+`pdf_compress_screen.dart`; **Icon** wraps the Material Icons ligature font, which has no
+web equivalent in Flutter's `Icon(IconData)`.
 
 Deliberately **not** built, because the source has no counterpart: Avatar, Tabs, Chip,
 Dialog, Tooltip, Switch, Slider, Toast queue, bottom navigation, FAB.
@@ -214,13 +205,16 @@ Dialog, Tooltip, Switch, Slider, Toast queue, bottom navigation, FAB.
 - `ui_kits/anvil-app/` — click-through recreation of the Android app: Home, Tool + progress,
   Result, My Files (history), Settings. See its `README.md` for the screen→source map.
 
+### Explorations — `explorations/`
+- `explorations/pdf-workspace.html` — current PDF editors vs. two redesign directions.
+
 ### Templates — `templates/`
 - `templates/anvil-screen/` — a blank Anvil screen (app bar + content column + primary
   action) to start a new mock from.
 
 ### Guidelines — `guidelines/`
-Twenty specimen cards backing the Design System tab: colour (seed, tonal palettes,
-surfaces, semantics, dark), type (display/headline/title/body/label/mono), spacing,
+Twenty specimen cards backing the Design System tab: colour (accent, neutral ramp, text,
+surfaces, roles in use, dark), type (display/headline/title/body/label/mono), spacing,
 shape, elevation, motion, state layers, wordmark, iconography.
 
 ### `assets/`
