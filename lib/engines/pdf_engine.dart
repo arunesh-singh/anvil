@@ -49,6 +49,15 @@ class PdfEngine {
     return out.takeBytes();
   });
 
+  /// Rotates individual pages: [degreesByPage] maps a 0-based page index to a
+  /// clockwise delta (multiple of 90). Pages not in the map are untouched.
+  Future<Uint8List> rotatePages(Uint8List input, Map<int, int> degreesByPage) =>
+      _guard(() async {
+        final out = MemorySink();
+        await _pdf.rotatePages(MemorySource(input), out, pages: degreesByPage);
+        return out.takeBytes();
+      });
+
   /// Recompresses embedded images at [imageQuality] and rewrites the file
   /// with stream compression. Resolution is left alone (no downsampling) —
   /// the compress tool's raster mode is the aggressive path.
@@ -133,42 +142,47 @@ class PdfEngine {
   });
 
   /// Renders one page (0-based) to PNG bytes for on-screen editing.
-  Future<PdfImageOut> renderPage(Uint8List input, int pageIndex,
-          {int maxWidth = 1600, int maxHeight = 1600}) =>
-      _guard(() async {
-        final doc = await _pdf.open(MemorySource(input));
-        try {
-          await for (final r in doc.render(
-            pages: PdfPages.single(pageIndex),
-            size: PdfRenderSize(maxWidth: maxWidth, maxHeight: maxHeight),
-          )) {
-            return PdfImageOut(r.data, 'png', 'image/png');
-          }
-          throw const ToolException('This PDF has no pages.');
-        } finally {
-          await doc.dispose();
-        }
-      });
+  Future<PdfImageOut> renderPage(
+    Uint8List input,
+    int pageIndex, {
+    int maxWidth = 1600,
+    int maxHeight = 1600,
+  }) => _guard(() async {
+    final doc = await _pdf.open(MemorySource(input));
+    try {
+      await for (final r in doc.render(
+        pages: PdfPages.single(pageIndex),
+        size: PdfRenderSize(maxWidth: maxWidth, maxHeight: maxHeight),
+      )) {
+        return PdfImageOut(r.data, 'png', 'image/png');
+      }
+      throw const ToolException('This PDF has no pages.');
+    } finally {
+      await doc.dispose();
+    }
+  });
 
   /// Renders every page small, for page-organizer thumbnails.
-  Future<List<PdfImageOut>> renderThumbnails(Uint8List input,
-          {int maxWidth = 320, int maxHeight = 320}) =>
-      _guard(() async {
-        final doc = await _pdf.open(MemorySource(input));
-        try {
-          final out = <PdfImageOut>[];
-          await for (final r in doc.render(
-            pages: const PdfPages.all(),
-            size: PdfRenderSize(maxWidth: maxWidth, maxHeight: maxHeight),
-          )) {
-            out.add(PdfImageOut(r.data, 'png', 'image/png'));
-          }
-          if (out.isEmpty) throw const ToolException('This PDF has no pages.');
-          return out;
-        } finally {
-          await doc.dispose();
-        }
-      });
+  Future<List<PdfImageOut>> renderThumbnails(
+    Uint8List input, {
+    int maxWidth = 320,
+    int maxHeight = 320,
+  }) => _guard(() async {
+    final doc = await _pdf.open(MemorySource(input));
+    try {
+      final out = <PdfImageOut>[];
+      await for (final r in doc.render(
+        pages: const PdfPages.all(),
+        size: PdfRenderSize(maxWidth: maxWidth, maxHeight: maxHeight),
+      )) {
+        out.add(PdfImageOut(r.data, 'png', 'image/png'));
+      }
+      if (out.isEmpty) throw const ToolException('This PDF has no pages.');
+      return out;
+    } finally {
+      await doc.dispose();
+    }
+  });
 
   /// Number of pages, for page-indexed ops and validation.
   Future<int> pageCount(Uint8List input) => _guard(() async {
@@ -204,17 +218,16 @@ class PdfEngine {
       });
 
   /// Diagonal tiled text watermark across every page.
-  Future<Uint8List> watermark(Uint8List input, String text) =>
-      _guard(() async {
-        final out = MemorySink();
-        await _pdf.watermark(
-          MemorySource(input),
-          out,
-          text: text,
-          position: const PdfWatermarkPosition.tiled(columns: 2, rows: 3),
-        );
-        return out.takeBytes();
-      });
+  Future<Uint8List> watermark(Uint8List input, String text) => _guard(() async {
+    final out = MemorySink();
+    await _pdf.watermark(
+      MemorySource(input),
+      out,
+      text: text,
+      position: const PdfWatermarkPosition.tiled(columns: 2, rows: 3),
+    );
+    return out.takeBytes();
+  });
 
   /// Places [text] at exact page coordinates (points, origin bottom-left).
   /// [pageIndex] is 0-based; -1 targets every page.
@@ -235,13 +248,18 @@ class PdfEngine {
         pageIndex,
         text,
         style: PdfWatermarkStyle(
-            fontSize: fontSize,
-            opacity: opacity,
-            rotation: 0,
-            fontName: fontName,
-            color: color),
+          fontSize: fontSize,
+          opacity: opacity,
+          rotation: 0,
+          fontName: fontName,
+          color: color,
+        ),
         position: PdfWatermarkPosition.exact(
-            x: x, y: y, width: fontSize * text.length * 0.6, height: fontSize * 1.4),
+          x: x,
+          y: y,
+          width: fontSize * text.length * 0.6,
+          height: fontSize * 1.4,
+        ),
       );
       final out = MemorySink();
       await editor.save(out);
@@ -301,7 +319,11 @@ class PdfEngine {
     final editor = await _pdf.edit(MemorySource(input));
     try {
       await editor.cropMargins(
-          left: left, top: top, right: right, bottom: bottom);
+        left: left,
+        top: top,
+        right: right,
+        bottom: bottom,
+      );
       final out = MemorySink();
       await editor.save(out);
       return out.takeBytes();
@@ -398,26 +420,25 @@ class PdfEngine {
     Uint8List pdf,
     List<({int page, Uint8List png})> overlays,
   ) => _guard(() async {
-        if (overlays.isEmpty) return pdf;
-        final editor = await _pdf.edit(MemorySource(pdf));
-        try {
-          for (final o in overlays) {
-            final mb = await editor.pageMediaBox(o.page);
-            await editor.addImageStamp(
-              o.page,
-              MemorySource(o.png),
-              rect: PdfRect(
-                  x: mb.x, y: mb.y, width: mb.width, height: mb.height),
-              opacity: 1,
-            );
-          }
-          final out = MemorySink();
-          await editor.save(out);
-          return out.takeBytes();
-        } finally {
-          await editor.dispose();
-        }
-      });
+    if (overlays.isEmpty) return pdf;
+    final editor = await _pdf.edit(MemorySource(pdf));
+    try {
+      for (final o in overlays) {
+        final mb = await editor.pageMediaBox(o.page);
+        await editor.addImageStamp(
+          o.page,
+          MemorySource(o.png),
+          rect: PdfRect(x: mb.x, y: mb.y, width: mb.width, height: mb.height),
+          opacity: 1,
+        );
+      }
+      final out = MemorySink();
+      await editor.save(out);
+      return out.takeBytes();
+    } finally {
+      await editor.dispose();
+    }
+  });
 
   /// Crops each page by its own margins. [perPage] length must equal the page
   /// count; a null entry leaves that page uncropped. Margins are in points.
@@ -425,19 +446,24 @@ class PdfEngine {
     Uint8List pdf,
     List<({double left, double top, double right, double bottom})?> perPage,
   ) => _guard(() async {
-        final pages = await split(pdf, 1);
-        if (perPage.length != pages.length) {
-          throw const ToolException('Page selection does not match the PDF.');
-        }
-        if (perPage.every((m) => m == null)) return pdf;
-        for (var i = 0; i < pages.length; i++) {
-          final m = perPage[i];
-          if (m == null) continue;
-          pages[i] = await cropMargins(pages[i],
-              left: m.left, top: m.top, right: m.right, bottom: m.bottom);
-        }
-        return merge(pages);
-      });
+    final pages = await split(pdf, 1);
+    if (perPage.length != pages.length) {
+      throw const ToolException('Page selection does not match the PDF.');
+    }
+    if (perPage.every((m) => m == null)) return pdf;
+    for (var i = 0; i < pages.length; i++) {
+      final m = perPage[i];
+      if (m == null) continue;
+      pages[i] = await cropMargins(
+        pages[i],
+        left: m.left,
+        top: m.top,
+        right: m.right,
+        bottom: m.bottom,
+      );
+    }
+    return merge(pages);
+  });
 
   Future<T> _guard<T>(Future<T> Function() op) async {
     try {

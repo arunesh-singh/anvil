@@ -127,8 +127,11 @@ class AgentSession {
         case LlmTextDelta(:final text):
           yield AgentText(text);
         case LlmToolCall(:final name, :final args):
-          logAction(logSourceAgent, 'Native tool call: $name',
-              detail: jsonEncode(args));
+          logAction(
+            logSourceAgent,
+            'Native tool call: $name',
+            detail: jsonEncode(args),
+          );
           yield* _handleCall(name, args);
           return;
         case LlmTurnDone(:final text):
@@ -152,13 +155,19 @@ class AgentSession {
               return;
             }
             _repairsLeft--;
-            logWarning(logSourceAgent, 'Empty turn — nudging',
-                detail: 'repairs left: $_repairsLeft');
+            logWarning(
+              logSourceAgent,
+              'Empty turn — nudging',
+              detail: 'repairs left: $_repairsLeft',
+            );
             yield* _drive(chat.send(_emptyTurnNudge));
             return;
           }
-          logAction(logSourceAgent, 'Model answered in text',
-              detail: _clip(answer, 400));
+          logAction(
+            logSourceAgent,
+            'Model answered in text',
+            detail: _clip(answer, 400),
+          );
           yield AgentDone(answer);
           return;
       }
@@ -209,8 +218,10 @@ class AgentSession {
     if (norm.isEmpty) return null;
     final loose = _byNorm[norm];
     if (loose != null) {
-      logWarning(logSourceAgent,
-          'Resolved loose function name "$name" to ${fnNameFor(loose.meta)}');
+      logWarning(
+        logSourceAgent,
+        'Resolved loose function name "$name" to ${fnNameFor(loose.meta)}',
+      );
       return loose;
     }
     ToolModule? bySlug;
@@ -222,8 +233,10 @@ class AgentSession {
       bySlug = e.value;
     }
     if (bySlug != null) {
-      logWarning(logSourceAgent,
-          'Resolved loose function name "$name" to ${fnNameFor(bySlug.meta)}');
+      logWarning(
+        logSourceAgent,
+        'Resolved loose function name "$name" to ${fnNameFor(bySlug.meta)}',
+      );
     }
     return bySlug;
   }
@@ -237,10 +250,16 @@ class AgentSession {
   }) {
     if (_repairsLeft <= 0) return Stream.value(AgentStuck(error));
     _repairsLeft--;
-    return _drive(chat.sendToolResult(toolName: toolName, response: {
-      'error': 'That tool failed: $error. Try a different function or '
-          'arguments, or explain the problem in plain text.',
-    }));
+    return _drive(
+      chat.sendToolResult(
+        toolName: toolName,
+        response: {
+          'error':
+              'That tool failed: $error. Try a different function or '
+              'arguments, or explain the problem in plain text.',
+        },
+      ),
+    );
   }
 }
 
@@ -286,6 +305,20 @@ String _extOf(String name) {
 /// would have been rejected anyway.
 ///
 /// Pure: also used by the controller to build a deterministic fallback call.
+/// Fills file arguments of [tool] from [available] by accepted extension and
+/// named slots, so the 2B model need not copy paths itself (its top failure).
+///
+/// For slot-based tools, maps provided or auto-filled arguments to slot keys.
+/// For legacy tools, uses the 'file'/'files' key.
+///
+/// Also REPLACES an argument that is not one of [available]: Needle grounds
+/// its arguments in the request text and produces `{"file": "pdf"}` or
+/// `{"file": "attached video"}`, which would fail the existence check and burn
+/// a repair. [available] is by construction the only legal input set
+/// (attachments on step 1, prior-step outputs afterwards), so any other value
+/// would have been rejected anyway.
+///
+/// Pure: also used by the controller to build a deterministic fallback call.
 Map<String, dynamic> fillFileArgs(
   ToolModule tool,
   Map<String, dynamic> args,
@@ -293,6 +326,61 @@ Map<String, dynamic> fillFileArgs(
 ) {
   final meta = tool.meta;
   if (!meta.requiresInput || available.isEmpty) return args;
+
+  // Slot-based tools: fill by role (document, signature, etc.)
+  if (meta.inputSlots.isNotEmpty) {
+    var out = {...args}
+      ..remove('file')
+      ..remove('files');
+    final availablePaths = {for (final f in available) f.path: f};
+    final used = <String>{};
+
+    // Pass 1: use provided values if they match extension
+    for (final slot in meta.inputSlots) {
+      final provided = out[slot.key];
+      if (provided is String && availablePaths.containsKey(provided)) {
+        final file = availablePaths[provided]!;
+        final ext = _extOf(file.name);
+        if (slot.extensions.contains(ext)) {
+          used.add(provided);
+          // Keep the value as-is
+          continue;
+        }
+      }
+      // Provided value wasn't valid; will be replaced or cleared in Pass 2
+      out.remove(slot.key);
+    }
+
+    // Pass 2: fill remaining slots from available files
+    for (final slot in meta.inputSlots) {
+      if (out.containsKey(slot.key)) continue; // Already filled in Pass 1
+
+      // Find first available file matching this slot's extensions
+      InputFile? match;
+      for (final f in available) {
+        if (!used.contains(f.path)) {
+          final ext = _extOf(f.name);
+          if (slot.extensions.contains(ext)) {
+            match = f;
+            break;
+          }
+        }
+      }
+
+      if (match != null) {
+        out[slot.key] = match.path;
+        used.add(match.path);
+      } else if (!slot.required) {
+        // Optional slot with no match: don't include it
+        out.remove(slot.key);
+      }
+      // Required slot with no match: leave it out; validator will reject
+    }
+
+    return out;
+  }
+
+  // Legacy file/files handling for non-slot tools
   final key = meta.acceptsMultiple ? 'files' : 'file';
   final provided = args[key];
   final availablePaths = {for (final f in available) f.path};
@@ -334,8 +422,7 @@ Map<String, dynamic> fillFileArgs(
 Object? _decodeJsonBlob(String text) {
   var s = text.trim();
   // Prefer a fenced block's contents when present (```json … ``` / ``` … ```).
-  final fence = RegExp(r'```(?:json|tool_code)?\s*([\s\S]*?)```')
-      .firstMatch(s);
+  final fence = RegExp(r'```(?:json|tool_code)?\s*([\s\S]*?)```').firstMatch(s);
   if (fence != null) s = fence.group(1)!.trim();
   final start = s.indexOf(RegExp(r'[{\[]'));
   if (start < 0) return null;

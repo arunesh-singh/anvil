@@ -20,6 +20,7 @@ import 'package:anvil/core/log_repository.dart';
 import 'package:anvil/core/registry.dart';
 import 'package:anvil/core/settings_repository.dart';
 import 'package:anvil/core/share_service.dart';
+import 'package:anvil/core/signature_store.dart';
 import 'package:anvil/engines/asr_engine.dart';
 import 'package:anvil/engines/ffmpeg_engine.dart';
 import 'package:anvil/engines/image_engine.dart';
@@ -32,6 +33,7 @@ import 'package:anvil/models/downloader.dart';
 import 'package:anvil/models/manifest_loader.dart';
 import 'package:anvil/models/model_cache.dart';
 import 'package:anvil/models/model_manager.dart';
+import 'package:anvil/tools/pdf/pdf_tools.dart' show buildPdfWorkspaceTool;
 
 /// v1 ships the curated catalog inside the app (`assets/manifest.json`); no
 /// Anvil-controlled CDN exists, so no remote catalog is configured and the
@@ -77,27 +79,32 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<OnnxEngine>(OnnxEngine.new)
     ..registerLazySingleton<AsrEngine>(AsrEngine.new)
     ..registerLazySingleton<LlmEngine>(LlmEngine.new)
-    ..registerLazySingleton<ModelManager>(
-      () {
-        final dio = Dio();
-        return ModelManager(
-          loader: ManifestLoader(
-            dio: dio,
-            cacheDir: Directory(p.join(support.path, 'anvil', 'manifest')),
-            manifestUrl: kModelManifestUrl,
-            bundledManifest: () => rootBundle.loadString('assets/manifest.json'),
-          ),
-          downloader: ModelDownloader(dio: dio),
-          cache: ModelCache(
-            baseDir: Directory(p.join(support.path, 'anvil')),
-          ),
-          capsProvider: const ProcMeminfoDeviceCapsProvider(),
-        );
-      },
+    ..registerLazySingleton<ModelManager>(() {
+      final dio = Dio();
+      return ModelManager(
+        loader: ManifestLoader(
+          dio: dio,
+          cacheDir: Directory(p.join(support.path, 'anvil', 'manifest')),
+          manifestUrl: kModelManifestUrl,
+          bundledManifest: () => rootBundle.loadString('assets/manifest.json'),
+        ),
+        downloader: ModelDownloader(dio: dio),
+        cache: ModelCache(baseDir: Directory(p.join(support.path, 'anvil'))),
+        capsProvider: const ProcMeminfoDeviceCapsProvider(),
+      );
+    })
+    ..registerLazySingleton<SignatureStore>(
+      () => SignatureStore(
+        Directory(p.join(support.path, 'anvil', 'signatures')),
+      ),
     )
-    ..registerSingleton<ToolRegistry>(ToolRegistry(buildTools()));
-  logAction(logSourceApp,
-      'App started \u00b7 ${getIt<ToolRegistry>().all.length} tools registered');
+    ..registerSingleton<ToolRegistry>(
+      ToolRegistry(buildTools(), internal: [buildPdfWorkspaceTool()]),
+    );
+  logAction(
+    logSourceApp,
+    'App started \u00b7 ${getIt<ToolRegistry>().all.length} tools registered',
+  );
 }
 
 /// Enforces the retention setting: deletes history rows (and their output
@@ -112,7 +119,9 @@ Future<void> pruneExpiredHistory() async {
     for (final r in removed) ...r.outputPaths,
   ]);
   if (removed.isNotEmpty) {
-    logAction(logSourceApp,
-        'Retention cleared ${removed.length} old results (older than $days days)');
+    logAction(
+      logSourceApp,
+      'Retention cleared ${removed.length} old results (older than $days days)',
+    );
   }
 }

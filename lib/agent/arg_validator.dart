@@ -29,6 +29,9 @@ String _ext(String name) {
   return dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
 }
 
+String _normChoice(String s) =>
+    s.trim().toLowerCase().replaceAll(RegExp(r'[\s_]+'), '-');
+
 /// Validates [args] against [tool]'s meta. [fileExists] is injectable for
 /// host tests (defaults to a real filesystem check).
 ValidatedCall validateCall(
@@ -39,33 +42,68 @@ ValidatedCall validateCall(
   final exists = fileExists ?? (p) => File(p).existsSync();
   final meta = tool.meta;
   final knownKeys = {
-    if (meta.requiresInput) meta.acceptsMultiple ? 'files' : 'file',
+    if (meta.inputSlots.isNotEmpty)
+      for (final s in meta.inputSlots) s.key
+    else if (meta.requiresInput)
+      meta.acceptsMultiple ? 'files' : 'file',
     for (final p in meta.params) p.key,
   };
   for (final key in args.keys) {
     if (!knownKeys.contains(key)) {
       throw InvalidCallException(
-          "Unknown argument '$key' for ${meta.qualifiedId}. "
-          'Allowed: ${knownKeys.join(', ')}.');
+        "Unknown argument '$key' for ${meta.qualifiedId}. "
+        'Allowed: ${knownKeys.join(', ')}.',
+      );
     }
   }
 
   // Files.
   final files = <InputFile>[];
-  if (meta.requiresInput) {
+  if (meta.inputSlots.isNotEmpty) {
+    // Slot branch: named file inputs by role
+    for (final s in meta.inputSlots) {
+      final raw = args[s.key];
+      if (raw == null) {
+        if (s.required) {
+          throw InvalidCallException(
+            "${meta.qualifiedId} needs '${s.key}': ${s.description}",
+          );
+        }
+        continue;
+      }
+      if (raw is! String) {
+        throw InvalidCallException(
+          "Argument '${s.key}' of ${meta.qualifiedId} must be one file path.",
+        );
+      }
+      if (!exists(raw)) {
+        throw InvalidCallException("File not found: $raw");
+      }
+      final ext = _ext(raw);
+      if (!s.extensions.contains(ext)) {
+        throw InvalidCallException(
+          "'${s.key}' of ${meta.qualifiedId} must be a ${s.extensions.join('/')} file, got '.$ext'.",
+        );
+      }
+      files.add(InputFile(path: raw, name: raw.split('/').last));
+    }
+  } else if (meta.requiresInput) {
+    // Original file/files branch
     final List<String> paths;
     if (meta.acceptsMultiple) {
       final raw = args['files'];
       if (raw is! List || raw.isEmpty || raw.any((e) => e is! String)) {
         throw InvalidCallException(
-            "${meta.qualifiedId} needs 'files': a non-empty list of paths.");
+          "${meta.qualifiedId} needs 'files': a non-empty list of paths.",
+        );
       }
       paths = raw.cast<String>();
     } else {
       final raw = args['file'];
       if (raw is! String || raw.isEmpty) {
         throw InvalidCallException(
-            "${meta.qualifiedId} needs 'file': the input file path.");
+          "${meta.qualifiedId} needs 'file': the input file path.",
+        );
       }
       paths = [raw];
     }
@@ -77,54 +115,78 @@ ValidatedCall validateCall(
       if (meta.acceptedExtensions.isNotEmpty &&
           !meta.acceptedExtensions.contains(ext)) {
         throw InvalidCallException(
-            "${meta.qualifiedId} accepts ${meta.acceptedExtensions.join('/')} "
-            "files, got '.$ext'.");
+          "${meta.qualifiedId} accepts ${meta.acceptedExtensions.join('/')} "
+          "files, got '.$ext'.",
+        );
       }
       files.add(InputFile(path: path, name: path.split('/').last));
     }
+  }
+  // Params: coerce + type-check against the declared ToolParams.
+  // Skip entirely for handoff-only tools.
+  final params = <String, dynamic>{};
+  if (meta.editorHandoff?.always != true) {
+    for (final p in meta.params) {
+      final raw = args[p.key];
+      if (raw == null) continue; // tools fall back to declared defaults
+      switch (p.type) {
+        case ToolParamType.integer:
+          final v = switch (raw) {
+            final int i => i,
+            final num n => n.toInt(),
+            final String s => int.tryParse(s.trim()),
+            _ => null,
+          };
+          if (v == null) {
+            throw InvalidCallException(
+              "Argument '${p.key}' of ${meta.qualifiedId} must be an "
+              'integer.',
+            );
+          }
+          if (v < p.min || (p.max != null && v > p.max!)) {
+            final range = p.max != null
+                ? '${p.min}–${p.max}'
+                : 'at least ${p.min}';
+            throw InvalidCallException(
+              "Argument '${p.key}' of ${meta.qualifiedId} must be $range.",
+            );
+          }
+          params[p.key] = v;
+        case ToolParamType.text:
+          if (raw is! String) {
+            throw InvalidCallException(
+              "Argument '${p.key}' of ${meta.qualifiedId} must be a string.",
+            );
+          }
+          params[p.key] = raw;
+        case ToolParamType.choice:
+          final want = raw is String ? _normChoice(raw) : null;
+          final match = p.choices
+              .where((c) => _normChoice(c) == want)
+              .firstOrNull;
+          if (match == null) {
+            throw InvalidCallException(
+              "Argument '${p.key}' of ${meta.qualifiedId} must be one of: "
+              "${p.choices.join(', ')}.",
+            );
+          }
+          params[p.key] = match; // canonical spelling
+      }
+    }
+  }
+
+  final input = ToolInput(files: files, params: params);
+  // A call that hands off to the editor gets its missing pieces from the
+  // user there, so an incomplete file set is expected, not an error.
+  if ((meta.requiresInput || meta.inputSlots.isNotEmpty) &&
+      tool.handoffReason(input) == null) {
     final setError = tool.fileSetError(files);
     if (setError != null) {
       throw InvalidCallException(
-          '${meta.qualifiedId} cannot run on '
-          '${files.map((f) => f.name).join(', ')}: $setError');
+        '${meta.qualifiedId} cannot run on '
+        '${files.map((f) => f.name).join(', ')}: $setError',
+      );
     }
   }
-
-  // Params: coerce + type-check against the declared ToolParams.
-  final params = <String, dynamic>{};
-  for (final p in meta.params) {
-    final raw = args[p.key];
-    if (raw == null) continue; // tools fall back to declared defaults
-    switch (p.type) {
-      case ToolParamType.integer:
-        final v = switch (raw) {
-          final int i => i,
-          final num n => n.toInt(),
-          final String s => int.tryParse(s.trim()),
-          _ => null,
-        };
-        if (v == null) {
-          throw InvalidCallException(
-              "Argument '${p.key}' of ${meta.qualifiedId} must be an "
-              'integer.');
-        }
-        if (v < p.min || (p.max != null && v > p.max!)) {
-          final range = p.max != null ? '${p.min}–${p.max}' : 'at least ${p.min}';
-          throw InvalidCallException(
-              "Argument '${p.key}' of ${meta.qualifiedId} must be $range.");
-        }
-        params[p.key] = v;
-      case ToolParamType.text:
-        if (raw is! String) {
-          throw InvalidCallException(
-              "Argument '${p.key}' of ${meta.qualifiedId} must be a string.");
-        }
-        params[p.key] = raw;
-    }
-  }
-
-  return ValidatedCall(
-    tool: tool,
-    input: ToolInput(files: files, params: params),
-  );
+  return ValidatedCall(tool: tool, input: input);
 }

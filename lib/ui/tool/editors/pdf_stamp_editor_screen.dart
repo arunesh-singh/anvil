@@ -1,31 +1,32 @@
-import 'dart:math' as math;
+/// WYSIWYG editor for `pdf/add-images`: pick the PDF first, then add an image
+/// from Photos / Camera / Files, optionally crop & rotate it, and drag/resize
+/// the stamp onto the page. Only geometry is collected — the underlying
+/// `_PdfPlusImage` module is unchanged. Signing lives in the PDF workspace.
+library;
+
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pdf_manipulator/pdf_manipulator.dart' show PdfPageInfo;
 
 import 'package:anvil/core/di.dart';
 import 'package:anvil/core/file_service.dart';
 import 'package:anvil/core/tool_io.dart';
 import 'package:anvil/core/tool_module.dart';
-import 'package:anvil/engines/image_engine.dart';
 import 'package:anvil/engines/pdf_engine.dart';
 import 'package:anvil/ui/providers.dart';
 import 'package:anvil/ui/tokens.dart';
 import 'package:anvil/ui/tool/editors/editor_scaffold.dart';
+import 'package:anvil/ui/tool/editors/image_edit_screen.dart';
 import 'package:anvil/ui/tool/image_canvas.dart';
 import 'package:anvil/ui/tool/job_controller.dart';
 import 'package:anvil/ui/tool/pdf_geometry.dart';
 import 'package:anvil/ui/widgets/slab.dart';
 
-/// WYSIWYG editor for `pdf/add-images` and `pdf/sign`: pick the PDF first, then
-/// add an image from Photos / Camera / Files, optionally crop & rotate it, and
-/// drag/resize the stamp onto the page. Only geometry is collected — the
-/// underlying `_PdfPlusImage` module is unchanged.
 class PdfStampEditorScreen extends ConsumerStatefulWidget {
   const PdfStampEditorScreen({super.key, required this.tool});
 
@@ -35,10 +36,6 @@ class PdfStampEditorScreen extends ConsumerStatefulWidget {
   ConsumerState<PdfStampEditorScreen> createState() =>
       _PdfStampEditorScreenState();
 }
-
-enum _ImgSource { gallery, camera, files }
-
-enum _Grip { move, tl, tr, bl, br }
 
 class _PdfStampEditorScreenState extends ConsumerState<PdfStampEditorScreen> {
   final GlobalKey _canvasKey = GlobalKey();
@@ -163,63 +160,13 @@ class _PdfStampEditorScreenState extends ConsumerState<PdfStampEditorScreen> {
   }
 
   Future<void> _addImage() async {
-    final source = await showModalBottomSheet<_ImgSource>(
-      context: context,
-      builder: (ctx) {
-        final c = Theme.of(ctx).extension<AnvilColors>()!;
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.photo_library, color: c.iconStrong),
-                title: const Text('Photos'),
-                onTap: () => Navigator.pop(ctx, _ImgSource.gallery),
-              ),
-              ListTile(
-                leading: Icon(Icons.photo_camera, color: c.iconStrong),
-                title: const Text('Camera'),
-                onTap: () => Navigator.pop(ctx, _ImgSource.camera),
-              ),
-              ListTile(
-                leading: Icon(Icons.folder_open, color: c.iconStrong),
-                title: const Text('Files'),
-                onTap: () => Navigator.pop(ctx, _ImgSource.files),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (source == null) return;
-    Uint8List? bytes;
+    final Uint8List? edited;
     try {
-      if (source == _ImgSource.files) {
-        final res = await FilePicker.pickFile(
-          type: FileType.custom,
-          allowedExtensions: const ['png', 'jpg', 'jpeg'],
-        );
-        final path = res?.path;
-        if (path != null) {
-          bytes = await getIt<FileService>().readBytes(path) as Uint8List;
-        }
-      } else {
-        final x = await _picker.pickImage(
-          source: source == _ImgSource.camera
-              ? ImageSource.camera
-              : ImageSource.gallery,
-        );
-        if (x != null) bytes = await x.readAsBytes();
-      }
+      edited = await pickAndEditImage(context, _picker);
     } catch (_) {
       setState(() => _error = 'Could not load the image.');
       return;
     }
-    if (bytes == null || !mounted) return;
-    final edited = await Navigator.push<Uint8List>(
-      context,
-      MaterialPageRoute(builder: (_) => _ImageEditScreen(bytes: bytes!)),
-    );
     if (edited == null) return;
     await _setImage(edited);
   }
@@ -247,10 +194,14 @@ class _PdfStampEditorScreenState extends ConsumerState<PdfStampEditorScreen> {
   void _dragBody(Offset delta) {
     final r = _stamp!;
     var tl = r.topLeft + delta;
-    final cx =
-        (tl.dx + r.width / 2).clamp(_displayRect.left, _displayRect.right);
-    final cy =
-        (tl.dy + r.height / 2).clamp(_displayRect.top, _displayRect.bottom);
+    final cx = (tl.dx + r.width / 2).clamp(
+      _displayRect.left,
+      _displayRect.right,
+    );
+    final cy = (tl.dy + r.height / 2).clamp(
+      _displayRect.top,
+      _displayRect.bottom,
+    );
     tl = Offset(cx - r.width / 2, cy - r.height / 2);
     _stamp = tl & r.size;
   }
@@ -275,15 +226,20 @@ class _PdfStampEditorScreenState extends ConsumerState<PdfStampEditorScreen> {
       return;
     }
     final r = canvasRectToPdf(stamp, _displayRect, _pagePt);
-    ref.read(jobProvider.notifier).start(
+    ref
+        .read(jobProvider.notifier)
+        .start(
           widget.tool,
-          ToolInput(files: [pdf, image], params: {
-            'page': _page + 1,
-            'x': r.x.round(),
-            'y': r.y.round(),
-            'width': r.width.round(),
-            'height': r.height.round(),
-          }),
+          ToolInput(
+            files: [pdf, image],
+            params: {
+              'page': _page + 1,
+              'x': r.x.round(),
+              'y': r.y.round(),
+              'width': r.width.round(),
+              'height': r.height.round(),
+            },
+          ),
         );
   }
 
@@ -329,8 +285,10 @@ class _PdfStampEditorScreenState extends ConsumerState<PdfStampEditorScreen> {
                     ? const Center(child: CircularProgressIndicator())
                     : ImageCanvas(
                         imageBytes: _pagePng!,
-                        imagePx:
-                            Size(_pages[_page].width, _pages[_page].height),
+                        imagePx: Size(
+                          _pages[_page].width,
+                          _pages[_page].height,
+                        ),
                         builder: _overlay,
                       ),
               ),
@@ -453,8 +411,10 @@ class _PdfStampEditorScreenState extends ConsumerState<PdfStampEditorScreen> {
                 child: Container(
                   width: 28,
                   height: 28,
-                  decoration:
-                      BoxDecoration(color: c.accent, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: c.accent,
+                    shape: BoxShape.circle,
+                  ),
                   child: Icon(Icons.open_in_full, size: 16, color: c.onAccent),
                 ),
               ),
@@ -462,297 +422,22 @@ class _PdfStampEditorScreenState extends ConsumerState<PdfStampEditorScreen> {
           ] else if (_imageBytes == null)
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: c.containerHigh.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(AnvilRadii.chip),
                 ),
-                child: Text('Add an image to place',
-                    style: TextStyle(color: c.onSurface)),
+                child: Text(
+                  'Add an image to place',
+                  style: TextStyle(color: c.onSurface),
+                ),
               ),
             ),
         ],
       ),
     );
   }
-}
-
-/// Rotates PNG/JPEG bytes 90° clockwise, returning PNG bytes.
-Future<Uint8List> _rotate90(Uint8List src) async {
-  final codec = await ui.instantiateImageCodec(src);
-  final frame = await codec.getNextFrame();
-  final image = frame.image;
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
-  canvas.translate(image.height.toDouble(), 0);
-  canvas.rotate(math.pi / 2);
-  canvas.drawImage(image, Offset.zero, Paint());
-  final picture = recorder.endRecording();
-  final rotated = await picture.toImage(image.height, image.width);
-  final data = await rotated.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  picture.dispose();
-  rotated.dispose();
-  return data!.buffer.asUint8List();
-}
-
-/// Inline crop + rotate step shown after an image is chosen. Returns the edited
-/// PNG bytes via [Navigator.pop], or null if the user backs out.
-class _ImageEditScreen extends StatefulWidget {
-  const _ImageEditScreen({required this.bytes});
-
-  final Uint8List bytes;
-
-  @override
-  State<_ImageEditScreen> createState() => _ImageEditScreenState();
-}
-
-class _ImageEditScreenState extends State<_ImageEditScreen> {
-  final GlobalKey _canvasKey = GlobalKey();
-  late Uint8List _bytes;
-  Size _imagePx = Size.zero;
-  Rect? _crop; // canvas coords
-  Rect _displayRect = Rect.zero;
-  bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _bytes = widget.bytes;
-    _decode();
-  }
-
-  Future<void> _decode() async {
-    final codec = await ui.instantiateImageCodec(_bytes);
-    final frame = await codec.getNextFrame();
-    final img = frame.image;
-    final size = Size(img.width.toDouble(), img.height.toDouble());
-    img.dispose();
-    if (mounted) setState(() => _imagePx = size);
-  }
-
-  void _drag(_Grip grip, Offset delta) {
-    var r = _crop!;
-    switch (grip) {
-      case _Grip.move:
-        r = r.shift(delta);
-      case _Grip.tl:
-        r = Rect.fromLTRB(r.left + delta.dx, r.top + delta.dy, r.right, r.bottom);
-      case _Grip.tr:
-        r = Rect.fromLTRB(r.left, r.top + delta.dy, r.right + delta.dx, r.bottom);
-      case _Grip.bl:
-        r = Rect.fromLTRB(r.left + delta.dx, r.top, r.right, r.bottom + delta.dy);
-      case _Grip.br:
-        r = Rect.fromLTRB(r.left, r.top, r.right + delta.dx, r.bottom + delta.dy);
-    }
-    const minSz = 24.0;
-    var l = r.left.clamp(_displayRect.left, _displayRect.right - minSz);
-    var t = r.top.clamp(_displayRect.top, _displayRect.bottom - minSz);
-    var rt = r.right.clamp(l + minSz, _displayRect.right);
-    var b = r.bottom.clamp(t + minSz, _displayRect.bottom);
-    if (grip == _Grip.move) {
-      final w = _crop!.width;
-      final h = _crop!.height;
-      l = r.left.clamp(_displayRect.left, _displayRect.right - w);
-      t = r.top.clamp(_displayRect.top, _displayRect.bottom - h);
-      rt = l + w;
-      b = t + h;
-    }
-    _crop = Rect.fromLTRB(l, t, rt, b);
-  }
-
-  Future<void> _rotate() async {
-    setState(() => _busy = true);
-    final out = await _rotate90(_bytes);
-    setState(() {
-      _bytes = out;
-      _crop = null;
-      _busy = false;
-    });
-    await _decode();
-  }
-
-  Future<void> _applyCrop() async {
-    final crop = _crop;
-    if (crop == null || _displayRect.width <= 0) return;
-    final scale = _imagePx.width / _displayRect.width;
-    final rel = crop.topLeft - _displayRect.topLeft;
-    setState(() => _busy = true);
-    try {
-      final out = await getIt<ImageEngine>().crop(
-        _bytes,
-        x: (rel.dx * scale).round(),
-        y: (rel.dy * scale).round(),
-        width: (crop.width * scale).round(),
-        height: (crop.height * scale).round(),
-        format: 'png',
-      );
-      setState(() {
-        _bytes = out;
-        _crop = null;
-        _busy = false;
-      });
-      await _decode();
-    } on ToolException catch (e) {
-      setState(() => _busy = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).extension<AnvilColors>()!;
-    return Scaffold(
-      backgroundColor: c.bg,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  InkWell(
-                    borderRadius: BorderRadius.circular(AnvilRadii.control),
-                    onTap: () => Navigator.pop(context),
-                    child: IconChip(
-                      icon: Icons.arrow_back,
-                      bg: c.container,
-                      fg: c.iconStrong,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text('Edit image',
-                        style: Theme.of(context).textTheme.titleLarge),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: c.container,
-                    borderRadius: BorderRadius.circular(AnvilRadii.panel),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _busy || _imagePx.width <= 0
-                      ? const Center(child: CircularProgressIndicator())
-                      : ImageCanvas(
-                          imageBytes: _bytes,
-                          imagePx: _imagePx,
-                          builder: _overlay,
-                        ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: SecondaryButton(
-                      label: 'Rotate 90°',
-                      icon: Icons.rotate_90_degrees_cw,
-                      onPressed: _busy ? null : _rotate,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SecondaryButton(
-                      label: 'Crop',
-                      icon: Icons.crop,
-                      onPressed: _busy ? null : _applyCrop,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              PrimaryButton(
-                label: 'Use image',
-                icon: Icons.check,
-                onPressed: _busy ? null : () => Navigator.pop(context, _bytes),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _overlay(BuildContext context, Rect displayRect, Size imagePx) {
-    _displayRect = displayRect;
-    _crop ??= Rect.fromCenter(
-      center: displayRect.center,
-      width: displayRect.width * 0.8,
-      height: displayRect.height * 0.8,
-    );
-    final crop = _crop!;
-    final c = Theme.of(context).extension<AnvilColors>()!;
-    return SizedBox.expand(
-      key: _canvasKey,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _DimPainter(crop, Colors.black.withValues(alpha: 0.5)),
-            ),
-          ),
-          Positioned.fromRect(
-            rect: crop,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onPanUpdate: (d) => setState(() => _drag(_Grip.move, d.delta)),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(color: c.accent, width: 2),
-                ),
-              ),
-            ),
-          ),
-          _corner(crop.topLeft, _Grip.tl, c),
-          _corner(crop.topRight, _Grip.tr, c),
-          _corner(crop.bottomLeft, _Grip.bl, c),
-          _corner(crop.bottomRight, _Grip.br, c),
-        ],
-      ),
-    );
-  }
-
-  Widget _corner(Offset at, _Grip grip, AnvilColors c) {
-    return Positioned(
-      left: at.dx - 14,
-      top: at.dy - 14,
-      child: GestureDetector(
-        onPanUpdate: (d) => setState(() => _drag(grip, d.delta)),
-        child: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle),
-        ),
-      ),
-    );
-  }
-}
-
-/// Dims everything outside [hole].
-class _DimPainter extends CustomPainter {
-  _DimPainter(this.hole, this.color);
-  final Rect hole;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final full = Path()..addRect(Offset.zero & size);
-    final inner = Path()..addRect(hole);
-    final outside = Path.combine(PathOperation.difference, full, inner);
-    canvas.drawPath(outside, Paint()..color = color);
-  }
-
-  @override
-  bool shouldRepaint(_DimPainter old) => old.hole != hole || old.color != color;
 }

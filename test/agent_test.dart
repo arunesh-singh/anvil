@@ -246,35 +246,108 @@ void main() {
     });
 
     test('a tool needing a PDF + an image rejects a lone image', () {
-      // Logged failure: the agent called pdf_add_images with only a photo,
-      // the call validated, the user confirmed, and the run then died on
-      // "Select one PDF and one PNG/JPG image."
-      final addImages = buildTools()
-          .firstWhere((t) => t.meta.qualifiedId == 'pdf/add-images');
+      // Slot-based: document (required, pdf) + image (optional, png/jpg).
+      // Lone image fails: document is missing.
+      final addImages = buildTools().firstWhere(
+        (t) => t.meta.qualifiedId == 'pdf/add-images',
+      );
       expect(
-        () => validateCall(
-          addImages,
-          {
-            'files': ['/cache/IMG-0004.jpg'],
-          },
-          fileExists: _always,
-        ),
+        () => validateCall(addImages, {
+          'image': '/cache/IMG-0004.jpg',
+        }, fileExists: _always),
         throwsA(
           isA<InvalidCallException>().having(
             (e) => e.message,
             'message',
-            contains('one PDF and one PNG/JPG image'),
+            contains("needs 'document'"),
           ),
         ),
       );
-      final ok = validateCall(
-        addImages,
-        {
-          'files': ['/cache/doc.pdf', '/cache/IMG-0004.jpg'],
+      // Valid: document + image.
+      final ok = validateCall(addImages, {
+        'document': '/cache/doc.pdf',
+        'image': '/cache/IMG-0004.jpg',
+      }, fileExists: _always);
+      expect(ok.input.files, hasLength(2));
+      expect(ok.input.files[0].path, '/cache/doc.pdf');
+      expect(ok.input.files[1].path, '/cache/IMG-0004.jpg');
+    });
+
+    group('real tools', () {
+      final byId = {for (final t in buildTools()) t.meta.qualifiedId: t};
+
+      test(
+        'a PDF with no picture hands off to the editor instead of failing',
+        () {
+          // "Sign this pdf" / "put a logo on this pdf" with only the PDF
+          // attached: the editor supplies the picture, so the call is valid
+          // and pauses for the user rather than being bounced to the model.
+          for (final id in ['pdf/sign', 'pdf/add-images']) {
+            final ok = validateCall(byId[id]!, {
+              'document': '/cache/doc.pdf',
+            }, fileExists: _always);
+            expect(byId[id]!.handoffReason(ok.input), isNotNull, reason: id);
+          }
+          final both = validateCall(byId['pdf/sign']!, {
+            'document': '/cache/doc.pdf',
+            'signature': '/cache/sig.png',
+          }, fileExists: _always);
+          expect(byId['pdf/sign']!.handoffReason(both.input), isNull);
         },
-        fileExists: _always,
       );
-      expect(ok.input.files.length, 2);
+
+      test('a slot rejects a file of the wrong kind', () {
+        expect(
+          () => validateCall(byId['pdf/sign']!, {
+            'document': '/cache/sig.png',
+          }, fileExists: _always),
+          throwsA(isA<InvalidCallException>()),
+        );
+      });
+
+      test(
+        'a choice is matched loosely and passed on in canonical spelling',
+        () {
+          final compress = byId['pdf/compress']!;
+          final ok = validateCall(compress, {
+            'file': '/cache/doc.pdf',
+            'method': ' Raster ',
+          }, fileExists: _always);
+          expect(ok.input.params['method'], 'raster');
+          expect(
+            () => validateCall(compress, {
+              'file': '/cache/doc.pdf',
+              'method': 'zip',
+            }, fileExists: _always),
+            throwsA(
+              isA<InvalidCallException>().having(
+                (e) => e.message,
+                'message',
+                allOf(contains('optimize'), contains('raster')),
+              ),
+            ),
+          );
+        },
+      );
+
+      test('fillFileArgs routes attachments to slots by kind, any order', () {
+        const photo = InputFile(path: '/cache/sig.jpg', name: 'sig.jpg');
+        const doc = InputFile(path: '/cache/doc.pdf', name: 'doc.pdf');
+        final sign = byId['pdf/sign']!;
+        // Omitted entirely, and swapped by a confused model: both end up
+        // with the PDF as the document and the picture as the signature.
+        for (final args in [
+          <String, dynamic>{},
+          {'document': photo.path, 'signature': doc.path},
+        ]) {
+          final filled = fillFileArgs(sign, args, const [photo, doc]);
+          expect(filled['document'], doc.path);
+          expect(filled['signature'], photo.path);
+        }
+        // No picture attached: the optional slot is left out, not invented.
+        final pdfOnly = fillFileArgs(sign, const {}, const [doc]);
+        expect(pdfOnly, {'document': doc.path});
+      });
     });
   });
 
@@ -384,14 +457,25 @@ void main() {
       expect(picked.length, lessThanOrEqualTo(10));
     });
 
-    test('WYSIWYG-only tools (edit, crop) are never offered to the agent', () {
-      // pdf/edit and pdf/crop need editor-supplied JSON (overlay maps, crop
-      // margins) the model cannot produce, so they must never be shortlisted.
-      final picked = shortlistTools(all, 'edit and crop this pdf',
-          attachmentExts: {'pdf'});
-      final ids = picked.map((t) => t.meta.qualifiedId).toSet();
-      expect(ids, isNot(contains('pdf/edit')));
-      expect(ids, isNot(contains('pdf/crop')));
+    test('editor-only pdf tools are offered and always hand off', () {
+      // pdf/edit, pdf/crop and pdf/remove-watermark need editor-supplied
+      // input (overlays, margins, a region) the model cannot produce; instead
+      // of hiding them, the agent routes to them and the call hands off to
+      // the editor rather than running headless on default values.
+      final picked = shortlistTools(
+        all,
+        'edit and crop this pdf',
+        attachmentExts: {'pdf'},
+      ).map((t) => t.meta.qualifiedId);
+      expect(picked, containsAll(['pdf/edit', 'pdf/crop']));
+      final byId = {for (final t in all) t.meta.qualifiedId: t};
+      const input = ToolInput(
+        files: [InputFile(path: '/cache/doc.pdf', name: 'doc.pdf')],
+        params: {},
+      );
+      for (final id in ['pdf/edit', 'pdf/crop', 'pdf/remove-watermark']) {
+        expect(byId[id]!.handoffReason(input), isNotNull, reason: id);
+      }
     });
 
     test('pdf/create IS offered to the agent (blank-PDF primitive)', () {
@@ -412,13 +496,15 @@ void main() {
       );
     });
     test('an attached file demotes zero-input generators (#3)', () {
-      final picked = shortlistTools(all, 'add the image on the pdf',
-          attachmentExts: {'pdf', 'jpg'});
+      final picked = shortlistTools(
+        all,
+        'add the image on the pdf',
+        attachmentExts: {'pdf', 'jpg'},
+      );
       final ids = picked.map((t) => t.meta.qualifiedId).toSet();
       expect(ids, contains('pdf/add-images'));
       expect(ids, isNot(contains('image/text-to-image')));
     });
-
   });
 
   group('AgentSession', () {
@@ -530,24 +616,34 @@ void main() {
       expect((events.last as AgentDone).answer, 'Done.');
     });
 
-    test('a blank turn is retried, then reports stuck if it stays blank',
-        () async {
-      final chat = _FakeChat([
-        const [LlmTurnDone('   ')],
-        const [LlmTurnDone('')],
-      ]);
-      final events =
-          await session(const [], maxRepairs: 1, out: chat).start('hi').toList();
-      // Original send + one nudge before giving up.
-      expect(chat.sent, hasLength(2));
-      expect(events.last, isA<AgentStuck>());
-      expect((events.last as AgentStuck).message, contains('could not answer'));
-    });
+    test(
+      'a blank turn is retried, then reports stuck if it stays blank',
+      () async {
+        final chat = _FakeChat([
+          const [LlmTurnDone('   ')],
+          const [LlmTurnDone('')],
+        ]);
+        final events = await session(
+          const [],
+          maxRepairs: 1,
+          out: chat,
+        ).start('hi').toList();
+        // Original send + one nudge before giving up.
+        expect(chat.sent, hasLength(2));
+        expect(events.last, isA<AgentStuck>());
+        expect(
+          (events.last as AgentStuck).message,
+          contains('could not answer'),
+        );
+      },
+    );
 
     test('a blank turn is retried and a following call is executed', () async {
       final chat = _FakeChat([
         const [LlmTurnDone('')],
-        const [LlmToolCall(name: 'pdf_compress', args: {'file': '/in.pdf'})],
+        const [
+          LlmToolCall(name: 'pdf_compress', args: {'file': '/in.pdf'}),
+        ],
       ]);
       final events = await session(const [], out: chat).start('go').toList();
       expect(chat.sent, hasLength(2));
@@ -617,8 +713,10 @@ void main() {
         fileExists: _always,
       );
       final events = await s.start('compress it').toList();
-      expect((events.last as AgentToolCall).call.input.files.single.path,
-          '/in.pdf');
+      expect(
+        (events.last as AgentToolCall).call.input.files.single.path,
+        '/in.pdf',
+      );
       // Filled deterministically — no repair round-trip.
       expect(chat.toolResults, isEmpty);
     });
@@ -628,7 +726,9 @@ void main() {
       // {"file": "pdf"} instead of a path. That must resolve, not burn a
       // repair on a non-existent file.
       final chat = _FakeChat([
-        const [LlmToolCall(name: 'pdf_compress', args: {'file': 'pdf'})],
+        const [
+          LlmToolCall(name: 'pdf_compress', args: {'file': 'pdf'}),
+        ],
       ]);
       final s = AgentSession(
         chat: chat,
@@ -637,26 +737,36 @@ void main() {
         fileExists: _always,
       );
       final events = await s.start('make this pdf smaller').toList();
-      expect((events.last as AgentToolCall).call.input.files.single.path,
-          '/tmp/a.pdf');
+      expect(
+        (events.last as AgentToolCall).call.input.files.single.path,
+        '/tmp/a.pdf',
+      );
       expect(chat.toolResults, isEmpty);
     });
 
     test('continueAfterToolError feeds the error back and drives a new call '
         '(#4)', () async {
       final chat = _FakeChat([
-        const [LlmToolCall(name: 'pdf_compress', args: {'file': '/in.pdf'})],
-        const [LlmToolCall(name: 'image_grayscale', args: {'file': '/in.pdf'})],
+        const [
+          LlmToolCall(name: 'pdf_compress', args: {'file': '/in.pdf'}),
+        ],
+        const [
+          LlmToolCall(name: 'image_grayscale', args: {'file': '/in.pdf'}),
+        ],
       ]);
       final s = session(const [], out: chat);
       final first = await s.start('go').toList();
-      expect((first.last as AgentToolCall).call.tool.meta.qualifiedId,
-          'pdf/compress');
+      expect(
+        (first.last as AgentToolCall).call.tool.meta.qualifiedId,
+        'pdf/compress',
+      );
       final recovered = await s
           .continueAfterToolError(toolName: 'pdf_compress', error: 'boom')
           .toList();
-      expect((recovered.last as AgentToolCall).call.tool.meta.qualifiedId,
-          'image/grayscale');
+      expect(
+        (recovered.last as AgentToolCall).call.tool.meta.qualifiedId,
+        'image/grayscale',
+      );
       expect(chat.toolResults, hasLength(1));
       expect(chat.toolResults.single.$1, 'pdf_compress');
       expect(chat.toolResults.single.$2['error'], contains('boom'));
@@ -671,7 +781,6 @@ void main() {
       expect(events.single, isA<AgentStuck>());
       expect(chat.toolResults, isEmpty);
     });
-
   });
 
   group('chain_prompt', () {
@@ -721,6 +830,5 @@ void main() {
     test('fitTextBlocks with a zero budget keeps nothing', () {
       expect(fitTextBlocks(['a' * 40], 0), isEmpty);
     });
-
   });
 }

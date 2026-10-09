@@ -6,6 +6,8 @@ Reclassified 2026-07-03: eps/vsd/vsdx/from-msg → DEFERRED-CLOUD (no on-device 
 
 **259 TinyWow tools** → **218 on-device in scope (84%)**, 33 deferred (cloud, post-v1), 7 dropped. (`pdf/annotate` merged into `pdf/add-text`.)
 
+> Two lenses: this file is the **TinyWow parity map** (218 on-device slugs). The **runtime registry** ships **220** `ToolModule`s (`test/registry_test.dart` — 11 converter / 34 pdf / 69 image / 52 video / 54 write) = the 218 parity slugs **plus two tools added beyond the catalog: `image/identify` and `pdf/photo-caption`**. By engine the registry is dartlib 41 · pdf 32 · image 21 · ffmpeg 47 · mlkit 10 · onnx 10 · asr 4 · llm 55 (the 55 LLM = 53 write + `pdf/summarizer` + `pdf/translate`; `write/word-counter` sits in the LLM *bucket* below but runs deterministically).
+
 | Bucket | Count | Meaning |
 |---|---|---|
 | ONDEVICE-DET | 139 | Deterministic native libs. Phase 1. Zero model, zero cost |
@@ -245,7 +247,7 @@ Reclassified 2026-07-03: eps/vsd/vsdx/from-msg → DEFERRED-CLOUD (no on-device 
 | write | tone-of-voice | `flutter_gemma` |
 | write | translate | `flutter_gemma` |
 | write | trivia-generator | `flutter_gemma` |
-| write | word-counter | `flutter_gemma` |
+| write | word-counter | `dart-libs` (deterministic; LLM bucket only) |
 | write | youtube-script-writer | `flutter_gemma` |
 
 ## Deferred — cloud required (post-v1) — 33

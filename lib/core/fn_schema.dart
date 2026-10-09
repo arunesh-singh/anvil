@@ -6,55 +6,81 @@
 /// (lib/agent/arg_validator.dart) enforces the same shape before execution.
 library;
 
+import 'package:anvil/core/tool_guide.dart';
 import 'package:anvil/core/tool_module.dart';
 import 'package:anvil/core/tool_vocab.dart';
 
 /// JSON-schema-shaped map: `{name, description, parameters, triggers}`.
 Map<String, dynamic> fnSchemaFor(ToolMeta meta) {
+  final handoffOnly = meta.editorHandoff?.always ?? false;
   final properties = <String, dynamic>{
-    if (meta.requiresInput)
+    if (meta.inputSlots.isNotEmpty)
+      for (final s in meta.inputSlots)
+        s.key: {
+          'type': 'string',
+          'description':
+              '${s.description} Absolute path of a ${s.extensions.join('/')} file.',
+        }
+    else if (meta.requiresInput)
       if (meta.acceptsMultiple)
         'files': {
           'type': 'array',
           'items': {'type': 'string'},
-          'description': 'Absolute paths of the input files '
+          'description':
+              'Absolute paths of the input files '
               '(${meta.acceptedExtensions.join('/')}).',
         }
       else
         'file': {
           'type': 'string',
-          'description': 'Absolute path of the input file '
+          'description':
+              'Absolute path of the input file '
               '(${meta.acceptedExtensions.join('/')}).',
         },
-    for (final p in meta.params)
-      p.key: switch (p.type) {
-        ToolParamType.integer => {
+    if (!handoffOnly)
+      for (final p in meta.params)
+        p.key: switch (p.type) {
+          ToolParamType.integer => {
             'type': 'integer',
             'description': _paramDescription(p),
             'default': p.defaultValue,
             'minimum': p.min,
             if (p.max != null) 'maximum': p.max,
           },
-        ToolParamType.text => {
+          ToolParamType.text => {
             'type': 'string',
             'description': _paramDescription(p),
             if (p.defaultText.isNotEmpty) 'default': p.defaultText,
           },
-      },
+          ToolParamType.choice => {
+            'type': 'string',
+            'description': _paramDescription(p),
+            'enum': p.choices,
+            'default': p.defaultText,
+          },
+        },
   };
+  final required = <String>[
+    if (meta.inputSlots.isNotEmpty)
+      for (final s in meta.inputSlots)
+        if (s.required)
+          s.key
+        else if (meta.requiresInput)
+          meta.acceptsMultiple ? 'files' : 'file',
+  ];
   return {
     'name': fnNameFor(meta),
-    'description': meta.description,
+    'description': () {
+      final guide = guideFor(meta.qualifiedId);
+      return guide != null
+          ? '${meta.description} ${guide.hint}'
+          : meta.description;
+    }(),
     'parameters': {
       'type': 'object',
       'properties': properties,
-      'required': [
-        if (meta.requiresInput) meta.acceptsMultiple ? 'files' : 'file',
-      ],
+      if (required.isNotEmpty) 'required': required,
     },
-    // Needle 3 routes on these; the LiteRT path reads only name/description/
-    // parameters, so Gemma and Qwen never see the key. It stays OUT of
-    // `parameters` — it is routing metadata, not an argument.
     'triggers': needleTriggersFor(meta),
   };
 }

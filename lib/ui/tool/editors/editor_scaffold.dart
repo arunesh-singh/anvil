@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:anvil/ui/providers.dart';
 import 'package:anvil/ui/result/result_screen.dart';
 import 'package:anvil/ui/tokens.dart';
 import 'package:anvil/ui/tool/job_controller.dart';
@@ -21,8 +22,14 @@ class EditorScaffold extends ConsumerWidget {
     final c = Theme.of(context).extension<AnvilColors>()!;
     final job = this.job;
     if (job is JobSuccess) {
+      final handoff = ref.read(agentHandoffProvider);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
+        if (handoff != null) {
+          if (!handoff.isCompleted) handoff.complete(job.result);
+          Navigator.of(context).popUntil((r) => r.isFirst);
+          return;
+        }
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => ResultScreen(result: job.result)),
@@ -34,22 +41,22 @@ class EditorScaffold extends ConsumerWidget {
       body: SafeArea(
         child: switch (job) {
           JobRunning(:final fraction, :final message) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Center(
-                      child: ProgressView(fraction: fraction, message: message),
-                    ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Center(
+                    child: ProgressView(fraction: fraction, message: message),
                   ),
-                  SecondaryButton(
-                    label: 'Stop',
-                    onPressed: () => ref.read(jobProvider.notifier).cancel(),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
+                ),
+                SecondaryButton(
+                  label: 'Stop',
+                  onPressed: () => ref.read(jobProvider.notifier).cancel(),
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
+          ),
           JobSuccess() => const Center(child: CircularProgressIndicator()),
           _ => builder(context),
         },
@@ -80,9 +87,7 @@ class EditorHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        Expanded(
-          child: Text(title, style: theme.textTheme.titleLarge),
-        ),
+        Expanded(child: Text(title, style: theme.textTheme.titleLarge)),
       ],
     );
   }

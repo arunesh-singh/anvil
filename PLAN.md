@@ -34,11 +34,12 @@ Runs in parallel with 1.5 (1.5 consumes it).
 - **Honest constraint:** "best model" = WE curate it in the manifest (offline eval); app auto-selects a *fast/quality variant* by device class, it does not auto-discover models.
 - **Status:** shipped in `lib/models/`: strict manifest schema+parse, ETag-cached loader w/ offline fallback, resumable Range downloads + streamed sha256 (one retry), versioned `taskId/version/variantId` cache w/ LRU eviction, /proc/meminfo device gating, coalescing `ModelManager.ensureReady` wired into DI. 17/17 unit tests. Remaining deployment config (not code): host the curated manifest at `kModelManifestUrl` and author variants after offline eval.
 
-## Phase 3 — On-device agent (~4–6 wk) — 56 LLM tools + orchestration
+## Phase 3 — On-device agent (~4–6 wk) — 56 LLM tools + orchestration — ✅ COMPLETE (2026-09-26)
 - `flutter_gemma` + **Gemma 4 E2B** (function calling). The 56 Write/summarize/translate tools become on-device LLM tools.
 - **Agent tiers (D6):** 3a NL→single-tool routing (reliable) → 3b 2–3 step guided chains (feasible w/ guardrails). **No 3c full autonomy, no cloud planner.**
 - Each `ToolModule.fnSchema` is exposed as a callable function; **all tool-call args validated** before execution.
 - **Acceptance:** "compress this PDF and convert to grayscale" → agent picks + chains the two on-device tools unattended (validator-gated, Stop cancels).
+- **Status:** shipped. Agent loop in `lib/agent/` (`agent_session.dart` tool-call loop, `arg_validator.dart` R3 arg validation, `tool_shortlist.dart` 6-tool cap, `chain_prompt.dart`, `attachment_ingest.dart`) driven through the host-testable `LlmChat` seam (`lib/engines/llm_chat.dart`); `flutter_gemma` 1.8.2 + `flutter_gemma_litertlm` behind `LlmEngine` (single-model, coalescing `ensureLoaded`). Write/summarize/translate tools are LLM-backed `ToolModule`s; chains capped at 5 steps to fit the KV budget. D6 amended 2026-09-19: confirm gate removed — a validated call executes immediately, Stop is the only brake. Acceptance verified: `test/chat_chain_test.dart` green (agent picks + chains tools unattended, validator-gated). Ships in `1.0.0-rc.1+3`.
 
 ## Out of scope (see DECISIONS.md)
 - Deferred (cloud, post-v1): 20 Office/ebook/image-gen tools.

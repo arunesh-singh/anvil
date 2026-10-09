@@ -28,6 +28,31 @@ class ModelSpec {
 }
 
 /// Static, user-facing description of a tool.
+/// One named file input the agent fills by role (the document vs the
+/// signature image) instead of an anonymous `files` list.
+class ToolInputSlot {
+  final String key;
+  final String description; // model-facing, one sentence
+  final List<String> extensions; // lowercase, no dot
+  final bool required;
+  const ToolInputSlot({
+    required this.key,
+    required this.description,
+    required this.extensions,
+    this.required = true,
+  });
+}
+
+/// A tool whose real input is placed by hand in its editor. [message] is
+/// shown in chat when the agent hands off. [always]: every agent call
+/// opens the editor; the schema exposes only the file input. Otherwise the
+/// module decides per call via [ToolModule.handoffReason].
+class EditorHandoff {
+  final String message;
+  final bool always;
+  const EditorHandoff(this.message, {this.always = false});
+}
+
 class ToolMeta {
   /// Stable internal id; equals the tinywow slug for ported tools.
   final String id;
@@ -61,10 +86,11 @@ class ToolMeta {
   /// they are hidden from the agent's shortlist while staying in the grid.
   final bool agentCallable;
 
-  /// Extra lowercase single words the agent's shortlist scores against, for
-  /// phrasings that appear in neither the id, the label, nor the description
-  /// (e.g. 'trim' for the video cutter). Scored like an id-word hit.
-  final List<String> keywords;
+  /// Named file input slots the agent fills by role.
+  final List<ToolInputSlot> inputSlots;
+
+  /// Editor hand-off configuration, if this tool needs user hand-placement.
+  final EditorHandoff? editorHandoff;
 
   /// Collision-free identifier: slugs repeat across categories (`compress`
   /// exists for pdf, image, and video), so persistence and the Phase-3 agent
@@ -83,12 +109,13 @@ class ToolMeta {
     this.acceptsMultiple = false,
     this.requiresInput = true,
     this.agentCallable = true,
-    this.keywords = const [],
+    this.inputSlots = const [],
+    this.editorHandoff,
   });
 }
 
 /// Kind of value a [ToolParam] carries; drives keyboard + parsing in the UI.
-enum ToolParamType { integer, text }
+enum ToolParamType { integer, text, choice }
 
 /// A single user-adjustable parameter. Integer params (e.g. rows-per-file)
 /// collect via [defaultValue]; free-text params (e.g. watermark text) via
@@ -109,6 +136,10 @@ class ToolParam {
 
   /// Renders as a multi-line box (article/brief bodies) instead of one line.
   final bool multiline;
+
+  /// choice only: the allowed values in canonical spelling; [defaultText]
+  /// must be one of them.
+  final List<String> choices;
   const ToolParam({
     required this.key,
     required this.label,
@@ -119,6 +150,7 @@ class ToolParam {
     this.max,
     this.helperText = '',
     this.multiline = false,
+    this.choices = const [],
   });
 }
 
@@ -136,6 +168,11 @@ abstract interface class ToolModule {
 
   /// Runs the tool, streaming progress then exactly one [ToolSucceeded].
   Stream<ToolProgress> run(ToolInput input);
+
+  /// Non-null when this call needs the user's hands in the tool's editor;
+  /// the agent opens the editor with the call's first file instead of
+  /// running. The value is the chat message.
+  String? handoffReason(ToolInput input);
 
   /// Rejects an input file *set* the tool cannot run on (e.g. `pdf/add-images`
   /// needs one PDF plus one image, `pdf/merge` needs two files) as a
@@ -160,6 +197,10 @@ abstract class BaseToolModule implements ToolModule {
 
   @override
   Future<void> ensureReady() async {}
+
+  @override
+  String? handoffReason(ToolInput input) =>
+      meta.editorHandoff?.always == true ? meta.editorHandoff!.message : null;
 
   @override
   String? fileSetError(List<InputFile> files) => null;

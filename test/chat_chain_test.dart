@@ -57,11 +57,15 @@ class _ChainTool extends BaseToolModule {
   final String outPath;
   final String outName;
 
+  /// Headless executions; a hand-off tool must stay at zero.
+  int runs = 0;
+
   @override
   EngineKind get engine => EngineKind.pdf;
 
   @override
   Stream<ToolProgress> run(ToolInput input) async* {
+    runs++;
     yield const ToolRunning(message: 'working');
     File(outPath).writeAsStringSync('output');
     yield ToolSucceeded(
@@ -225,6 +229,8 @@ void main() {
   late _ChainTool toolA;
   late _ChainTool toolB;
   late _ChainTool toolG;
+  late _ChainTool toolH;
+  late String pdfPath;
   late String inputPath;
   late String outAPath;
   late String grayPath;
@@ -255,16 +261,36 @@ void main() {
       outPath: grayPath,
       outName: 'gray.jpg',
     );
+    // An editor-only tool (pdf/crop-like): every call hands off to its editor.
+    pdfPath = p.join(tmp.path, 'doc.pdf');
+    File(pdfPath).writeAsStringSync('pdf');
+    toolH = _ChainTool(
+      meta: const ToolMeta(
+        id: 'crop',
+        category: ToolCategory.pdf,
+        label: 'Crop PDF',
+        icon: Icons.crop,
+        description: 'Trim page margins.',
+        tinywowSlug: 'crop',
+        acceptedExtensions: ['pdf'],
+        editorHandoff: EditorHandoff('Set the margins.', always: true),
+      ),
+      outPath: p.join(tmp.path, 'never.pdf'),
+      outName: 'never.pdf',
+    );
 
     db = await _openChatDb();
     getIt.registerSingleton<ChatRepository>(ChatRepository(db));
     getIt.registerSingleton<HistoryRepository>(_FakeHistoryRepository());
-    getIt.registerSingleton<ToolRegistry>(ToolRegistry([toolA, toolB, toolG]));
+    getIt.registerSingleton<ToolRegistry>(
+      ToolRegistry([toolA, toolB, toolG, toolH]),
+    );
     getIt.registerSingleton<ModelManager>(_FakeModelManager());
     // The controller holds the process up for the duration of a turn; on the
     // host there is no Android service behind the channel.
     getIt.registerSingleton<ForegroundKeepAlive>(
-        ForegroundKeepAlive(supported: false));
+      ForegroundKeepAlive(supported: false),
+    );
   });
 
   tearDown(() async {
@@ -317,8 +343,9 @@ void main() {
 
       expect(engine.startChatCount, 3);
       final msgs = container.read(chatProvider).messages;
-      final steps =
-          msgs.where((m) => m.kind == ChatMessageKind.toolStep).toList();
+      final steps = msgs
+          .where((m) => m.kind == ChatMessageKind.toolStep)
+          .toList();
       expect(steps, hasLength(2));
       // Step 1's output is reopenable and became step 2's input.
       expect(steps.first.outputPath, outAPath);
@@ -388,41 +415,117 @@ void main() {
     },
   );
 
+  test('an editor-only step pauses for the user, then the chain resumes on the '
+      "editor's result", () async {
+    final crop = fnNameFor(toolH.meta);
+    final engine = wireEngine([
+      [
+        LlmToolCall(name: crop, args: {'file': pdfPath}),
+      ],
+      const [LlmTurnDone('Done.')],
+    ]);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(chatProvider.notifier);
+
+    await notifier.send('crop this pdf');
+    await settle(container, (s) => s.handoff != null);
+
+    // Paused: the editor owns the step; nothing ran headless.
+    final h = container.read(chatProvider).handoff!;
+    expect(toolH.runs, 0);
+    expect(h.file.path, pdfPath);
+    expect(container.read(chatProvider).busy, isTrue);
+
+    final cropped = p.join(tmp.path, 'cropped.pdf');
+    File(cropped).writeAsStringSync('cropped');
+    await notifier.finishHandoff(
+      h.token,
+      ToolResult(
+        files: [OutputFile(path: cropped, name: 'cropped.pdf')],
+      ),
+    );
+    await settle(container, (s) => !s.busy);
+
+    final s = container.read(chatProvider);
+    expect(s.handoff, isNull);
+    expect(toolH.runs, 0);
+    final steps = s.messages
+        .where((m) => m.kind == ChatMessageKind.toolStep)
+        .toList();
+    expect(steps, hasLength(1));
+    expect(steps.single.outputPath, cropped);
+    // The editor's output fed a second turn, which closed the chain.
+    expect(engine.startChatCount, 2);
+    expect(s.messages.last.text, 'Done.');
+  });
+
   test(
-    'a cold model does not swallow the turn: the question is on screen and '
-    'the chat is busy while the model is still loading',
+    'backing out of the editor ends the chain with nothing changed',
     () async {
-      final gate = Completer<void>();
-      wireEngine([
+      final crop = fnNameFor(toolH.meta);
+      final engine = wireEngine([
         [
-          LlmToolCall(name: fnNameFor(toolA.meta), args: {'file': inputPath}),
+          LlmToolCall(name: crop, args: {'file': pdfPath}),
         ],
-        const [LlmTurnDone('Done.')],
-      ], loadGate: gate);
+        const [LlmTurnDone('never reached')],
+      ]);
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(chatProvider.notifier);
-      final keepAlive = getIt<ForegroundKeepAlive>();
 
-      final sending = notifier.send('make a pdf');
-      await settle(container, (s) => s.messages.isNotEmpty);
-
-      // Still inside ensureLoaded: the composer was cleared, so the user turn
-      // and the busy state are what stop the screen looking frozen.
-      expect(gate.isCompleted, isFalse);
-      final mid = container.read(chatProvider);
-      expect(mid.busy, isTrue);
-      expect(mid.messages.single.role, ChatRole.user);
-      expect(mid.messages.single.text, 'make a pdf');
-      // …and the process is held so the load survives an app switch.
-      expect(keepAlive.active, isTrue);
-
-      gate.complete();
-      await sending;
+      await notifier.send('crop this pdf');
+      await settle(container, (s) => s.handoff != null);
+      await notifier.finishHandoff(
+        container.read(chatProvider).handoff!.token,
+        null,
+      );
       await settle(container, (s) => !s.busy);
 
-      // The step ran unattended and the hold was handed back at the end.
-      expect(keepAlive.active, isFalse);
+      final s = container.read(chatProvider);
+      expect(s.handoff, isNull);
+      expect(toolH.runs, 0);
+      expect(
+        s.messages.where((m) => m.kind == ChatMessageKind.toolStep),
+        isEmpty,
+      );
+      expect(engine.startChatCount, 1);
+      expect(s.messages.last.text, contains('cancelled'));
     },
   );
+
+  test('a cold model does not swallow the turn: the question is on screen and '
+      'the chat is busy while the model is still loading', () async {
+    final gate = Completer<void>();
+    wireEngine([
+      [
+        LlmToolCall(name: fnNameFor(toolA.meta), args: {'file': inputPath}),
+      ],
+      const [LlmTurnDone('Done.')],
+    ], loadGate: gate);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(chatProvider.notifier);
+    final keepAlive = getIt<ForegroundKeepAlive>();
+
+    final sending = notifier.send('make a pdf');
+    await settle(container, (s) => s.messages.isNotEmpty);
+
+    // Still inside ensureLoaded: the composer was cleared, so the user turn
+    // and the busy state are what stop the screen looking frozen.
+    expect(gate.isCompleted, isFalse);
+    final mid = container.read(chatProvider);
+    expect(mid.busy, isTrue);
+    expect(mid.messages.single.role, ChatRole.user);
+    expect(mid.messages.single.text, 'make a pdf');
+    // …and the process is held so the load survives an app switch.
+    expect(keepAlive.active, isTrue);
+
+    gate.complete();
+    await sending;
+    await settle(container, (s) => !s.busy);
+
+    // The step ran unattended and the hold was handed back at the end.
+    expect(keepAlive.active, isFalse);
+  });
 }

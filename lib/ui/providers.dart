@@ -48,6 +48,14 @@ final filteredToolsProvider = Provider<List<ToolModule>>((ref) {
 /// A file received via Android share intent, awaiting a tool selection.
 final pendingSharedInputProvider = StateProvider<InputFile?>((_) => null);
 
+/// Set while an editor is open on the agent's behalf. [EditorScaffold]
+/// completes it with the run's result and returns to the shell instead of
+/// pushing ResultScreen; the chat completes it with null when the editor is
+/// left without a result.
+final agentHandoffProvider = StateProvider<Completer<ToolResult?>?>(
+  (_) => null,
+);
+
 /// Holds the app theme mode, persisted via [SettingsRepository].
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
@@ -140,8 +148,7 @@ final modelStatusProvider = FutureProvider.family<ModelStatus, String>(
 final llmStatusProvider = StreamProvider<LlmStatus>((ref) {
   // Widget tests mount screens without a locator; an absent engine is simply
   // an empty slot, not an error.
-  final engine =
-      getIt.isRegistered<LlmEngine>() ? getIt<LlmEngine>() : null;
+  final engine = getIt.isRegistered<LlmEngine>() ? getIt<LlmEngine>() : null;
   if (engine == null) {
     return Stream.value(const LlmStatus(LlmPhase.unloaded));
   }
@@ -185,12 +192,12 @@ final logCountsProvider = FutureProvider<({int total, int errors})>(
 /// Read from the platform package metadata, which Flutter derives from
 /// pubspec's `version: <name>+<build>` at build time — so a pubspec bump shows
 /// up here with no code change.
-final appVersionProvider = FutureProvider<({String version, String build})>(
-  (_) async {
-    final info = await PackageInfo.fromPlatform();
-    return (version: info.version, build: info.buildNumber);
-  },
-);
+final appVersionProvider = FutureProvider<({String version, String build})>((
+  _,
+) async {
+  final info = await PackageInfo.fromPlatform();
+  return (version: info.version, build: info.buildNumber);
+});
 
 /// In-flight download state for one task: [fraction] in 0..1 (null = size
 /// unknown / indeterminate), or a terminal [error] message.
@@ -235,8 +242,12 @@ class ModelDownloadsNotifier extends Notifier<Map<String, ModelDownloadState>> {
       ref.invalidate(cacheBytesProvider);
       ref.invalidate(modelStatusProvider(taskId));
     } catch (e, s) {
-      logError(logSourceModel, 'Model $taskId download failed',
-          error: e, stack: s);
+      logError(
+        logSourceModel,
+        'Model $taskId download failed',
+        error: e,
+        stack: s,
+      );
       await keepAliveRelease(keepAliveDownload);
       state = {...state, taskId: ModelDownloadState(error: e.toString())};
     }
@@ -258,8 +269,12 @@ class ModelDownloadsNotifier extends Notifier<Map<String, ModelDownloadState>> {
       ref.invalidate(cacheBytesProvider);
       ref.invalidate(modelStatusProvider(taskId));
     } catch (e, s) {
-      logError(logSourceModel, 'Model $taskId import failed',
-          error: e, stack: s);
+      logError(
+        logSourceModel,
+        'Model $taskId import failed',
+        error: e,
+        stack: s,
+      );
       state = {...state, taskId: ModelDownloadState(error: e.toString())};
     }
   }
@@ -269,8 +284,8 @@ class ModelDownloadsNotifier extends Notifier<Map<String, ModelDownloadState>> {
 
 final modelDownloadsProvider =
     NotifierProvider<ModelDownloadsNotifier, Map<String, ModelDownloadState>>(
-  ModelDownloadsNotifier.new,
-);
+      ModelDownloadsNotifier.new,
+    );
 
 /// Newest run, for the Home resume card. Null when history is empty/loading.
 final resumeProvider = Provider<HistoryRecord?>(

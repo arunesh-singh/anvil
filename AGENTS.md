@@ -58,11 +58,12 @@ flutter test                          # full host suite (~264 tests, ~35 s)
 flutter test test/chat_chain_test.dart --plain-name "a cold model"   # one test
 flutter run -d <device>
 flutter build apk --release           # signs with android/key.properties, else debug keys
+flutter build appbundle --release     # Play submission: AAB ~380 MB, per-device install ~106 MB (arm64) / ~74 MB (armv7)
 flutter test integration_test -d <device>                             # on-device smoke, needs models
 flutter test --dart-define=ANVIL_REQUIRE_MODELS=true integration_test -d <device>  # QA gate: fail, don't skip
 ```
 
-There is no CI, no Makefile, and no scripts directory — these commands are the whole toolchain. The release APK is ~546 MB (universal, all ABIs and native runtimes); Play requires `--split-per-abi` or an app bundle before store submission.
+There is no CI, no Makefile, and no scripts directory — these commands are the whole toolchain. The universal release APK is ~524 MB (all ABIs + native runtimes); for Play, ship the app bundle (`flutter build appbundle --release`) — Play splits it per ABI/density/language so a real arm64 phone downloads ~106 MB, under the 150 MB base limit. `flutter build apk --split-per-abi` is the alternative for direct/sideload distribution.
 
 ## Code Conventions & Common Patterns
 
@@ -73,7 +74,8 @@ There is no CI, no Makefile, and no scripts directory — these commands are the
 2. `meta.id` **must equal the TinyWow slug** (`data/tool_classification.json`); `qualifiedId` is `<category>/<id>` and must be unique.
 3. `run()` yields zero or more `ToolRunning(fraction?, message?)` then exactly one `ToolSucceeded(ToolResult(...))`; throw `ToolException('user-facing message')` for failures.
 4. Append it to the file's `build*Tools()` list — `buildTools()` in `lib/core/registry.dart` is the one canonical list; never hand-maintain a second one.
-5. Set `agentCallable: false` for tools whose real input comes from a WYSIWYG editor, and implement `fileSetError` for combinations extensions cannot express (e.g. "one PDF plus one image"). Extension checks belong in `acceptedExtensions`, not `fileSetError`.
+5. Tools whose real input comes from a WYSIWYG editor get `editorHandoff: EditorHandoff(message, always: true)` — the agent routes to them and the chat opens the editor (`ChatController._beginHandoff` → `chat_screen` → `EditorScaffold` completes `agentHandoffProvider` → `finishHandoff`). Override `handoffReason` when only some calls need the editor (`_PdfPlusImage`: no picture attached). Reserve `agentCallable: false` for tools the agent must never see. Name file roles with `inputSlots` (e.g. `document` + `signature`); use `ToolParamType.choice` for enumerated params. Implement `fileSetError` for combinations extensions cannot express; extension checks belong in `acceptedExtensions`.
+6. Add a `ToolGuide` (hint + keywords) in `lib/core/guides/<category>_guides.dart`, following the rules in `lib/core/tool_guide.dart`; `test/tool_guide_test.dart` fails for any agent-callable tool without one.
 
 **DI split.** `getIt` (`lib/core/di.dart`) holds lifecycle-free singletons: DB, repositories, services, engines, `ModelManager`, `ToolRegistry`, `ForegroundKeepAlive`. Riverpod holds ephemeral UI state (`lib/ui/providers.dart`). Tool bodies resolve engines via `getIt<XEngine>()`; widgets read providers.
 

@@ -3,8 +3,9 @@
 /// six declarations the Ask tab actually ships (`_agentToolLimit`).
 ///
 /// A miss here is a whole class of "the agent doesn't work" reports. Fix it by
-/// adding `keywords:` at the tool's own meta, or a query-side entry in
-/// `_synonyms` when the word should boost a family; never by lowering the bar.
+/// adding `keywords` to the tool's guide in `lib/core/guides/`, or a
+/// query-side entry in `toolSynonyms` when the word should boost a family;
+/// never by lowering the bar.
 library;
 
 import 'package:anvil/agent/tool_shortlist.dart';
@@ -50,7 +51,7 @@ const _corpus = <_Row>[
   // PDF the user never attached.
   _Row(
     'create a pdf with the image and write the item name below the image '
-        'in the pdf',
+    'in the pdf',
     {'jpg'},
     {'pdf/photo-caption'},
   ),
@@ -62,6 +63,26 @@ const _corpus = <_Row>[
   _Row('turn this excel file into a csv', {'xlsx'}, {'converter/excel-to-csv'}),
   _Row('translate this text to spanish', {}, {'write/translate'}),
   _Row('count the words in this', {}, {'write/word-counter'}),
+  // Editor hand-off tools: offered to the agent, finished by hand.
+  _Row('sign this pdf', {'pdf'}, {'pdf/sign'}),
+  _Row('put my logo on this pdf', {'pdf', 'png'}, {'pdf/add-images'}),
+  _Row(
+    'get rid of the watermark on this pdf',
+    {'pdf'},
+    {'pdf/remove-watermark'},
+  ),
+  _Row('trim the margins of this pdf', {'pdf'}, {'pdf/crop'}),
+  _Row('highlight a paragraph in this pdf', {'pdf'}, {'pdf/edit'}),
+  // Choice params and new guide vocabulary.
+  _Row('mirror this photo', {'jpg'}, {'image/flip'}),
+  _Row('write my name at the top of this pdf', {'pdf'}, {'pdf/add-text'}),
+  _Row('make this video smaller', {'mp4'}, {'video/compress'}),
+  _Row('make this email sound more formal', {}, {'write/tone-of-voice'}),
+  _Row(
+    'split this csv into files of 100 rows',
+    {'csv'},
+    {'converter/split-csv'},
+  ),
 ];
 
 void main() {

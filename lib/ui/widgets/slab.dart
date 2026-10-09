@@ -100,7 +100,11 @@ class ToolRow extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: mono
-                            ? AnvilText.mono(12, color: c.muted, height: 18 / 12)
+                            ? AnvilText.mono(
+                                12,
+                                color: c.muted,
+                                height: 18 / 12,
+                              )
                             : text.bodyMedium!.copyWith(color: c.muted),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -110,8 +114,7 @@ class ToolRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              trailing ??
-                  Icon(Icons.chevron_right, size: 20, color: c.hint),
+              trailing ?? Icon(Icons.chevron_right, size: 20, color: c.hint),
             ],
           ),
         ),
@@ -141,10 +144,9 @@ class SectionEyebrow extends StatelessWidget {
         ],
         Text(
           text,
-          style: Theme.of(context).textTheme.labelSmall!.copyWith(
-                color: col,
-                letterSpacing: 1,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall!.copyWith(color: col, letterSpacing: 1),
         ),
       ],
     );
@@ -152,15 +154,18 @@ class SectionEyebrow extends StatelessWidget {
 }
 
 /// Full-width filled action button. Disabled when [onPressed] is null.
+/// [detail] renders in mono after the label, e.g. `Export · est. 12.4 MB`.
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,
     required this.label,
+    this.detail,
     this.icon,
     this.onPressed,
   });
 
   final String label;
+  final String? detail;
   final IconData? icon;
   final VoidCallback? onPressed;
 
@@ -182,11 +187,14 @@ class PrimaryButton extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall!
-                    .copyWith(color: fg, fontSize: 16),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall!.copyWith(color: fg, fontSize: 16),
               ),
+              if (detail != null) ...[
+                const SizedBox(width: 6),
+                Text(detail!, style: AnvilText.mono(13, color: fg)),
+              ],
               if (icon != null) ...[
                 const SizedBox(width: 8),
                 Icon(icon, size: 20, color: fg),
@@ -228,10 +236,10 @@ class SecondaryButton extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall!
-                    .copyWith(color: c.onSurface, fontSize: 16),
+                style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                  color: c.onSurface,
+                  fontSize: 16,
+                ),
               ),
               if (icon != null) ...[
                 const SizedBox(width: 8),
@@ -296,8 +304,9 @@ class InfoCard extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style:
-                  Theme.of(context).textTheme.bodyLarge!.copyWith(color: c.muted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(color: c.muted),
             ),
           ),
         ],
@@ -307,6 +316,8 @@ class InfoCard extends StatelessWidget {
 }
 
 /// A labelled integer stepper: `[−] value [+]` with optional helper text.
+/// `−`/`+` move by [step], clamped to [min]/[max]. [color] overrides the panel
+/// surface (sheets pass [AnvilColors.containerHigh]).
 class StepperField extends StatelessWidget {
   const StepperField({
     super.key,
@@ -314,6 +325,8 @@ class StepperField extends StatelessWidget {
     required this.value,
     this.min = 0,
     this.max,
+    this.step = 1,
+    this.color,
     required this.onChanged,
     this.helperText,
   });
@@ -322,6 +335,8 @@ class StepperField extends StatelessWidget {
   final int value;
   final int min;
   final int? max;
+  final int step;
+  final Color? color;
   final ValueChanged<int> onChanged;
   final String? helperText;
 
@@ -331,8 +346,10 @@ class StepperField extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final canDec = value > min;
     final canInc = max == null || value < max!;
+    int clamp(int v) => math.max(min, max == null ? v : math.min(max!, v));
     return SlabPanel(
       padding: const EdgeInsets.all(16),
+      color: color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -342,9 +359,10 @@ class StepperField extends StatelessWidget {
               _stepBtn(
                 context,
                 Icons.remove,
-                bg: c.containerHigh,
+                // Stay visible when the panel itself is containerHigh.
+                bg: color == null ? c.containerHigh : c.container,
                 fg: canDec ? c.onSurface : c.faint,
-                onTap: canDec ? () => onChanged(value - 1) : null,
+                onTap: canDec ? () => onChanged(clamp(value - step)) : null,
               ),
               SizedBox(
                 width: 48,
@@ -359,16 +377,13 @@ class StepperField extends StatelessWidget {
                 Icons.add,
                 bg: c.accent,
                 fg: canInc ? c.onAccent : c.faint,
-                onTap: canInc ? () => onChanged(value + 1) : null,
+                onTap: canInc ? () => onChanged(clamp(value + step)) : null,
               ),
             ],
           ),
           if (helperText != null && helperText!.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              helperText!,
-              style: text.bodyMedium!.copyWith(color: c.muted),
-            ),
+            Text(helperText!, style: text.bodyMedium!.copyWith(color: c.muted)),
           ],
         ],
       ),
@@ -539,21 +554,21 @@ class _RingPainter extends CustomPainter {
 
 /// Human category label, shared by Home and Browse.
 String categoryLabel(ToolCategory c) => switch (c) {
-      ToolCategory.pdf => 'PDF',
-      ToolCategory.image => 'Image',
-      ToolCategory.video => 'Video & audio',
-      ToolCategory.converter => 'Convert files',
-      ToolCategory.write => 'Write',
-    };
+  ToolCategory.pdf => 'PDF',
+  ToolCategory.image => 'Image',
+  ToolCategory.video => 'Video & audio',
+  ToolCategory.converter => 'Convert files',
+  ToolCategory.write => 'Write',
+};
 
 /// Category glyph, shared by Home and Browse.
 IconData categoryIcon(ToolCategory c) => switch (c) {
-      ToolCategory.pdf => Icons.picture_as_pdf,
-      ToolCategory.image => Icons.image,
-      ToolCategory.video => Icons.movie,
-      ToolCategory.converter => Icons.sync_alt,
-      ToolCategory.write => Icons.edit_note,
-    };
+  ToolCategory.pdf => Icons.picture_as_pdf,
+  ToolCategory.image => Icons.image,
+  ToolCategory.video => Icons.movie,
+  ToolCategory.converter => Icons.sync_alt,
+  ToolCategory.write => Icons.edit_note,
+};
 
 /// The fixed category display order used by the Home "Browse the bench" rows.
 const List<ToolCategory> kCategoryOrder = [

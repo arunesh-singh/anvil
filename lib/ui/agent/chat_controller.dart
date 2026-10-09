@@ -33,6 +33,18 @@ import 'package:anvil/engines/llm_engine.dart';
 import 'package:anvil/models/manifest.dart';
 import 'package:anvil/models/model_manager.dart';
 
+/// An agent step waiting on the user in a tool's editor.
+class ChatHandoff {
+  final int token;
+  final ToolModule tool;
+  final InputFile file;
+  const ChatHandoff({
+    required this.token,
+    required this.tool,
+    required this.file,
+  });
+}
+
 class ChatUiState {
   final List<ChatSession> sessions;
   final int? currentId;
@@ -42,6 +54,7 @@ class ChatUiState {
   final List<InputFile> attachments;
   final String? stepProgress;
   final bool busy;
+  final ChatHandoff? handoff;
 
   const ChatUiState({
     this.sessions = const [],
@@ -52,6 +65,7 @@ class ChatUiState {
     this.attachments = const [],
     this.stepProgress,
     this.busy = false,
+    this.handoff,
   });
 
   ChatSession? get current =>
@@ -68,6 +82,8 @@ class ChatUiState {
     String? stepProgress,
     bool clearStepProgress = false,
     bool? busy,
+    ChatHandoff? handoff,
+    bool clearHandoff = false,
   }) => ChatUiState(
     sessions: sessions ?? this.sessions,
     currentId: clearCurrentId ? null : (currentId ?? this.currentId),
@@ -79,16 +95,20 @@ class ChatUiState {
         ? null
         : (stepProgress ?? this.stepProgress),
     busy: busy ?? this.busy,
+    handoff: clearHandoff ? null : (handoff ?? this.handoff),
   );
 }
 
 class ChatController extends Notifier<ChatUiState> {
   AgentSession? _session;
   StreamSubscription<AgentEvent>? _sub;
+  ValidatedCall? _handoffCall;
+  int _handoffSeq = 0;
 
   // --- Chain orchestration (controller-driven; one AgentSession per step) --
   static const int _maxChainSteps = 5;
-  static const int _agentToolLimit = 6; // fewer schemas: better 2B selection + tokens
+  static const int _agentToolLimit =
+      6; // fewer schemas: better 2B selection + tokens
   // Needle renders at most five declarations per turn — above five its
   // retrieval head silently drops the rest, and a dropped tool is unreachable.
   static const int _needleToolLimit = 5;
@@ -450,15 +470,20 @@ class ChatController extends Notifier<ChatUiState> {
         prompt = base;
       } else {
         final schemaTokens = candidates.fold<int>(
-            0, (a, t) => a + estimateTokens(jsonEncode(t.fnSchema)));
-        final reserved = estimateTokens(system) +
+          0,
+          (a, t) => a + estimateTokens(jsonEncode(t.fnSchema)),
+        );
+        final reserved =
+            estimateTokens(system) +
             schemaTokens +
             estimateTokens(base) +
             _images.length * _imageTokenCost +
             session.maxOutputTokens +
             _promptMargin;
         final blocks = fitTextBlocks(
-            _textBlocks, getIt<LlmEngine>().contextTokens - reserved);
+          _textBlocks,
+          getIt<LlmEngine>().contextTokens - reserved,
+        );
         prompt = base + blocks.join();
       }
     } else {
@@ -505,6 +530,14 @@ class ChatController extends Notifier<ChatUiState> {
       );
       return;
     }
+
+    // The user's hands are needed (editor-only input): pause the chain and
+    // let the chat screen open the editor; [finishHandoff] resumes it.
+    final reason = call.tool.handoffReason(call.input);
+    if (reason != null) {
+      await _beginHandoff(pending, reason);
+      return;
+    }
     state = state.copyWith(busy: true);
     await _holdProcess('Anvil is running a step');
     logAction(
@@ -535,10 +568,12 @@ class ChatController extends Notifier<ChatUiState> {
         'Step ${pending.step} failed: ${call.tool.meta.qualifiedId}',
         detail: e.message,
       );
-      _consume(session.continueAfterToolError(
-        toolName: fnNameFor(call.tool.meta),
-        error: e.message,
-      ));
+      _consume(
+        session.continueAfterToolError(
+          toolName: fnNameFor(call.tool.meta),
+          error: e.message,
+        ),
+      );
       return;
     } catch (e, s) {
       state = state.copyWith(clearStepProgress: true);
@@ -548,10 +583,12 @@ class ChatController extends Notifier<ChatUiState> {
         error: e,
         stack: s,
       );
-      _consume(session.continueAfterToolError(
-        toolName: fnNameFor(call.tool.meta),
-        error: 'That step failed: $e',
-      ));
+      _consume(
+        session.continueAfterToolError(
+          toolName: fnNameFor(call.tool.meta),
+          error: 'That step failed: $e',
+        ),
+      );
       return;
     }
     state = state.copyWith(clearStepProgress: true);
@@ -615,12 +652,97 @@ class ChatController extends Notifier<ChatUiState> {
     await _releaseProcess();
   }
 
+  Future<void> _beginHandoff(AgentToolCall pending, String reason) async {
+    final label = pending.call.tool.meta.label;
+    await _addAssistant(
+      state.currentId!,
+      ChatMessageKind.text,
+      text: '$reason Opening $label…',
+    );
+    _closeSession();
+    await _releaseProcess();
+    _handoffCall = pending.call;
+    state = state.copyWith(
+      busy: true,
+      stepProgress: 'Waiting for you in $label…',
+      handoff: ChatHandoff(
+        token: ++_handoffSeq,
+        tool: pending.call.tool,
+        file: pending.call.input.files.first,
+      ),
+    );
+    logAction(
+      logSourceAgent,
+      'Step ${pending.step} handed off to editor: ${pending.call.tool.meta.qualifiedId}',
+    );
+  }
+
+  Future<void> finishHandoff(int token, ToolResult? result) async {
+    if (state.handoff?.token != token || _handoffCall == null) return;
+
+    final call = _handoffCall!;
+    _handoffCall = null;
+    state = state.copyWith(clearHandoff: true, clearStepProgress: true);
+
+    final out = result?.files.firstOrNull;
+    if (out == null) {
+      logAction(
+        logSourceAgent,
+        'Hand-off cancelled: ${call.tool.meta.qualifiedId}',
+      );
+      await _endChain(
+        '${call.tool.meta.label} cancelled — nothing was changed.',
+      );
+      return;
+    }
+
+    // Record the step result like _runStep does
+    await getIt<HistoryRepository>().add(
+      HistoryRecord(
+        toolId: call.tool.meta.qualifiedId,
+        inputNames: [for (final f in call.input.files) f.name],
+        outputPaths: [out.path],
+        createdAt: DateTime.now(),
+      ),
+    );
+    _steps.add(
+      ChainStep(
+        toolLabel: call.tool.meta.label,
+        toolId: call.tool.meta.qualifiedId,
+        outputName: out.name,
+        outputPath: out.path,
+      ),
+    );
+    await _addAssistant(
+      state.currentId!,
+      ChatMessageKind.toolStep,
+      toolLabel: call.tool.meta.label,
+      outputName: out.name,
+      outputPath: out.path,
+    );
+
+    // Check if we've hit the step limit
+    if (_steps.length >= _maxChainSteps) {
+      await _endChain('Reached the $_maxChainSteps-step limit — stopping.');
+      return;
+    }
+
+    // Continue the chain
+    await _holdProcess('Anvil is running a step');
+    await _startStep(first: false);
+  }
+
   Future<void> stop() async {
+    _handoffCall = null;
     await _sub?.cancel();
     _sub = null;
     await _flushStreamingAssistant();
     _closeSession();
-    state = state.copyWith(busy: false, clearStepProgress: true);
+    state = state.copyWith(
+      busy: false,
+      clearStepProgress: true,
+      clearHandoff: true,
+    );
     await _releaseProcess();
   }
 
@@ -710,6 +832,7 @@ class ChatController extends Notifier<ChatUiState> {
     final wantsInput = _stepFiles.isNotEmpty;
     for (final t in _lastCandidates) {
       if (t.meta.requiresInput != wantsInput) continue;
+      if (t.meta.editorHandoff != null) continue;
       try {
         return AgentToolCall(
           validateCall(t, fillFileArgs(t, const {}, _stepFiles)),
@@ -736,10 +859,7 @@ class ChatController extends Notifier<ChatUiState> {
     if (id != null) {
       await _addAssistant(id, ChatMessageKind.failure, text: message);
     }
-    state = state.copyWith(
-      busy: false,
-      clearStepProgress: true,
-    );
+    state = state.copyWith(busy: false, clearStepProgress: true);
     _closeSession();
     await _releaseProcess();
   }

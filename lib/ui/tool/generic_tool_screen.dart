@@ -28,7 +28,8 @@ const _previewImageTools = {
   'image/flip',
 };
 
-bool _hasPreview(ToolModule t) => _previewImageTools.contains(t.meta.qualifiedId);
+bool _hasPreview(ToolModule t) =>
+    _previewImageTools.contains(t.meta.qualifiedId);
 
 /// Default screen for any tool: pick a file, run, watch progress, see result.
 ///
@@ -64,9 +65,9 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
     super.initState();
     for (final p in widget.tool.meta.params) {
       _paramControllers[p.key] = TextEditingController(
-        text: p.type == ToolParamType.text
-            ? p.defaultText
-            : p.defaultValue.toString(),
+        text: p.type == ToolParamType.integer
+            ? p.defaultValue.toString()
+            : p.defaultText,
       );
     }
     if (_hasPreview(widget.tool)) {
@@ -139,10 +140,10 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
   Map<String, dynamic> _collectParams() {
     return {
       for (final p in widget.tool.meta.params)
-        p.key: p.type == ToolParamType.text
-            ? _paramControllers[p.key]!.text
-            : int.tryParse(_paramControllers[p.key]!.text.trim()) ??
-                p.defaultValue,
+        p.key: p.type == ToolParamType.integer
+            ? (int.tryParse(_paramControllers[p.key]!.text.trim()) ??
+                  p.defaultValue)
+            : _paramControllers[p.key]!.text,
     };
   }
 
@@ -230,8 +231,9 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
     final c = theme.extension<AnvilColors>()!;
     final params = tool.meta.params;
     final spec = tool.model;
-    final Widget? gate =
-        spec == null ? null : buildModelGate(context, ref, spec.taskId);
+    final Widget? gate = spec == null
+        ? null
+        : buildModelGate(context, ref, spec.taskId);
     final ready = modelReady(ref, spec?.taskId);
     return ListView(
       children: [
@@ -323,33 +325,34 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
                 ),
               ),
             ),
-            if (_expanded)
-              ...[
-                for (final p in params.skip(1)) ...[
-                  _paramField(context, p),
-                  const SizedBox(height: 8),
-                ],
+            if (_expanded) ...[
+              for (final p in params.skip(1)) ...[
+                _paramField(context, p),
+                const SizedBox(height: 8),
               ],
+            ],
           ],
         ],
         if (job is JobFailed) ...[
           const SizedBox(height: 16),
           Text(job.message, style: TextStyle(color: c.error)),
         ],
-        if (gate != null) ...[
-          const SizedBox(height: 16),
-          gate,
-        ],
+        if (gate != null) ...[const SizedBox(height: 16), gate],
         const SizedBox(height: 24),
         PrimaryButton(
           label: 'Run',
           icon: Icons.arrow_forward,
           onPressed: (_selected.isEmpty && tool.meta.requiresInput) || !ready
               ? null
-              : () => ref.read(jobProvider.notifier).start(
-                  tool,
-                  ToolInput(files: List.of(_selected), params: _collectParams()),
-                ),
+              : () => ref
+                    .read(jobProvider.notifier)
+                    .start(
+                      tool,
+                      ToolInput(
+                        files: List.of(_selected),
+                        params: _collectParams(),
+                      ),
+                    ),
         ),
         const SizedBox(height: 20),
       ],
@@ -357,6 +360,23 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
   }
 
   Widget _paramField(BuildContext context, ToolParam p) {
+    if (p.type == ToolParamType.choice) {
+      return DropdownButtonFormField<String>(
+        initialValue: p.choices.contains(_paramControllers[p.key]!.text)
+            ? _paramControllers[p.key]!.text
+            : p.defaultText,
+        items: p.choices
+            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+            .toList(),
+        decoration: InputDecoration(
+          labelText: p.label,
+          helperText: p.helperText.isEmpty ? null : p.helperText,
+        ),
+        onChanged: (v) {
+          if (v != null) setState(() => _paramControllers[p.key]!.text = v);
+        },
+      );
+    }
     if (p.type == ToolParamType.integer) {
       final value =
           int.tryParse(_paramControllers[p.key]!.text.trim()) ?? p.defaultValue;
@@ -414,8 +434,10 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
           ),
           if (_previewFailed) ...[
             const SizedBox(height: 8),
-            Text('Preview unavailable',
-                style: theme.textTheme.bodyMedium?.copyWith(color: c.muted)),
+            Text(
+              'Preview unavailable',
+              style: theme.textTheme.bodyMedium?.copyWith(color: c.muted),
+            ),
           ],
         ],
       ),

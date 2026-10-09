@@ -13,7 +13,7 @@ Confirmed with product owner on 2026-06-20. **These are settled — execute agai
 | D7 | Project location | `/Volumes/Arunesh/projects/anvil` | Codename "Anvil"; planning docs live here for omp/Claude handoff |
 
 ## Scope consequences
-- **In scope (on-device): 219/259 tools** — 140 deterministic + 23 ML + 56 LLM. (Reclassified 2026-07-03: eps/vsd/vsdx/from-msg have no on-device engine → deferred; translate + tiff-to-text are OCR/MT → ML.)
+- **In scope (on-device): 218/259 tools** — 139 deterministic + 23 ML + 56 LLM. (Reclassified 2026-07-03: eps/vsd/vsdx/from-msg have no on-device engine → deferred; translate + tiff-to-text are OCR/MT → ML.)
 - **Deferred (needs cloud, revisit post-v1 as Pro): 33** — PDF↔Office, ebook (epub/mobi/azw3) conversions, excel-to-pdf, AI image generation, EPS/Visio (.vsd/.vsdx) conversions, Outlook .msg to PDF.
 - **Dropped: 7** — social downloaders.
 

@@ -6,6 +6,8 @@
 /// cancels a chain mid-flight.
 library;
 
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +21,7 @@ import 'package:anvil/models/model_manager.dart';
 import 'package:anvil/ui/agent/chat_controller.dart';
 import 'package:anvil/ui/providers.dart';
 import 'package:anvil/ui/tokens.dart';
+import 'package:anvil/ui/tool/tool_screen.dart';
 import 'package:anvil/ui/widgets/llm_memory_panel.dart';
 import 'package:anvil/ui/widgets/model_gate.dart';
 import 'package:anvil/ui/widgets/slab.dart';
@@ -56,8 +59,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.read(chatProvider.notifier).send(text);
   }
 
+  /// Opens the tool's editor for a paused agent step. The editor preloads
+  /// [ChatHandoff.file] via [pendingSharedInputProvider]; [EditorScaffold]
+  /// completes the [agentHandoffProvider] completer with the run's result.
+  /// Backing out of the editor completes it with null (= cancelled).
+  Future<void> _openHandoff(ChatHandoff h) async {
+    final done = Completer<ToolResult?>();
+    ref.read(pendingSharedInputProvider.notifier).state = h.file;
+    ref.read(agentHandoffProvider.notifier).state = done;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => toolScreenFor(h.tool)),
+    );
+    if (!done.isCompleted) done.complete(null);
+    final result = await done.future;
+    if (!mounted) return;
+    ref.read(agentHandoffProvider.notifier).state = null;
+    await ref.read(chatProvider.notifier).finishHandoff(h.token, result);
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<ChatHandoff?>(chatProvider.select((s) => s.handoff), (
+      prev,
+      next,
+    ) {
+      if (next != null && next.token != prev?.token) _openHandoff(next);
+    });
     final theme = Theme.of(context);
     final c = theme.extension<AnvilColors>()!;
     final state = ref.watch(chatProvider);
@@ -572,10 +600,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         message = progress;
       } else if (llm != null && llm.isLoading) {
         final since = llm.since;
-        final secs =
-            since == null ? 0 : DateTime.now().difference(since).inSeconds;
-        final label =
-            llm.taskId == null ? 'the model' : modelTaskLabel(llm.taskId!);
+        final secs = since == null
+            ? 0
+            : DateTime.now().difference(since).inSeconds;
+        final label = llm.taskId == null
+            ? 'the model'
+            : modelTaskLabel(llm.taskId!);
         message = 'Loading $label\u2026 ${secs}s';
       } else if (llm != null && !llm.isLoaded) {
         message = 'Preparing the model\u2026';

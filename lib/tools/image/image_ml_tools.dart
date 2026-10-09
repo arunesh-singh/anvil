@@ -29,7 +29,10 @@ const _inpaintModel = ModelSpec(taskId: 'image.inpaint');
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 int _intParam(Map<String, dynamic> p, String key, int fallback) =>
-    switch (p[key]) { final int v => v, _ => fallback };
+    switch (p[key]) {
+      final int v => v,
+      _ => fallback,
+    };
 
 String _textParam(Map<String, dynamic> p, String key, String fallback) =>
     switch (p[key]) {
@@ -47,20 +50,24 @@ Future<Uint8List> _readBytes(InputFile f) async =>
     await getIt<FileService>().readBytes(f.path) as Uint8List;
 
 Future<img.Image> _decode(Uint8List bytes) => runOffThread(() {
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) {
-        throw const ToolException('Could not read the image.');
-      }
-      return decoded;
-    });
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) {
+    throw const ToolException('Could not read the image.');
+  }
+  return decoded;
+});
 
 /// Fetches the subject mask for a decoded image via ML Kit.
 Future<List<double>> _subjectMask(InputFile f, img.Image decoded) async {
-  final mask = await getIt<MlKitEngine>()
-      .subjectMask(f.path, decoded.width, decoded.height);
+  final mask = await getIt<MlKitEngine>().subjectMask(
+    f.path,
+    decoded.width,
+    decoded.height,
+  );
   if (mask.confidence.length != decoded.width * decoded.height) {
     throw const ToolException(
-        'Subject segmentation returned an unexpected mask size.');
+      'Subject segmentation returned an unexpected mask size.',
+    );
   }
   return mask.confidence;
 }
@@ -75,15 +82,16 @@ Future<img.Image> _runEnhance(ModelSpec spec, img.Image src) async {
 
 /// Runs the inpaint-contract model with the given fill rectangles.
 Future<img.Image> _runInpaint(
-    img.Image src, List<(int, int, int, int)> rects) async {
+  img.Image src,
+  List<(int, int, int, int)> rects,
+) async {
   if (rects.isEmpty) {
     throw const ToolException('Nothing selected to remove.');
   }
   final model = await getIt<ModelManager>().ensureReady(_inpaintModel);
   final image = await runOffThread(() => ml.imageToTensor(src));
   final mask = ml.rectMask(src.width, src.height, rects);
-  final output =
-      await getIt<OnnxEngine>().inpaint(model.filePath, image, mask);
+  final output = await getIt<OnnxEngine>().inpaint(model.filePath, image, mask);
   return runOffThread(() => ml.tensorToImage(output));
 }
 
@@ -99,7 +107,10 @@ class _MlTool extends BaseToolModule {
 
   /// (input file, params) → (bytes, extension, mime, optional inline text).
   final Future<(Uint8List, String, String, String?)> Function(
-      InputFile f, Map<String, dynamic> params) _body;
+    InputFile f,
+    Map<String, dynamic> params,
+  )
+  _body;
 
   @override
   EngineKind get engine => _engine;
@@ -123,10 +134,12 @@ class _MlTool extends BaseToolModule {
     yield const ToolRunning(fraction: 0.9, message: 'Saving…');
     final name = _outName(f.name, ext);
     final file = await getIt<FileService>().writeBytes(name, bytes);
-    yield ToolSucceeded(ToolResult(
-      files: [OutputFile(path: file.path, name: name, mimeType: mime)],
-      text: text,
-    ));
+    yield ToolSucceeded(
+      ToolResult(
+        files: [OutputFile(path: file.path, name: name, mimeType: mime)],
+        text: text,
+      ),
+    );
   }
 }
 
@@ -139,7 +152,6 @@ ToolMeta _meta(
   String description,
   List<String> accepts, {
   List<ToolParam> params = const [],
-  List<String> keywords = const [],
 }) => ToolMeta(
   id: id,
   category: ToolCategory.image,
@@ -149,7 +161,6 @@ ToolMeta _meta(
   tinywowSlug: id,
   acceptedExtensions: accepts,
   params: params,
-  keywords: keywords,
 );
 
 const _photos = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
@@ -162,148 +173,204 @@ const _rectParams = [
 ];
 
 List<(int, int, int, int)> _rectFromParams(Map<String, dynamic> p) => [
-      (
-        _intParam(p, 'x', 0),
-        _intParam(p, 'y', 0),
-        _intParam(p, 'width', 200),
-        _intParam(p, 'height', 200),
-      ),
-    ];
+  (
+    _intParam(p, 'x', 0),
+    _intParam(p, 'y', 0),
+    _intParam(p, 'width', 200),
+    _intParam(p, 'height', 200),
+  ),
+];
 
 /// Segmentation tool over the shared cutout pipeline.
-_MlTool _segTool(String id, String label, String description,
-        {List<ToolParam> params = const [],
-        required Future<img.Image> Function(
-                img.Image decoded, List<double> mask, Map<String, dynamic> p)
-            compose}) =>
-    _MlTool(
-      _meta(id, label, Icons.auto_fix_high, description, _photos,
-          params: params),
-      EngineKind.mlkit,
-      null,
-      (f, p) async {
-        final decoded = await _decode(await _readBytes(f));
-        final mask = await _subjectMask(f, decoded);
-        final composed = await compose(decoded, mask, p);
-        final png = await runOffThread(() => img.encodePng(composed));
-        return (png, 'png', 'image/png', null);
-      },
-    );
+_MlTool _segTool(
+  String id,
+  String label,
+  String description, {
+  List<ToolParam> params = const [],
+  required Future<img.Image> Function(
+    img.Image decoded,
+    List<double> mask,
+    Map<String, dynamic> p,
+  )
+  compose,
+}) => _MlTool(
+  _meta(id, label, Icons.auto_fix_high, description, _photos, params: params),
+  EngineKind.mlkit,
+  null,
+  (f, p) async {
+    final decoded = await _decode(await _readBytes(f));
+    final mask = await _subjectMask(f, decoded);
+    final composed = await compose(decoded, mask, p);
+    final png = await runOffThread(() => img.encodePng(composed));
+    return (png, 'png', 'image/png', null);
+  },
+);
 
 /// Enhance-model tool (upscale/deblur/sharpen/colorize).
-_MlTool _enhanceTool(String id, String label, String description,
-        ModelSpec spec,
-        {List<String> accepts = _photos, List<String> keywords = const []}) =>
-    _MlTool(
-      _meta(id, label, Icons.auto_awesome, description, accepts,
-          keywords: keywords),
-      EngineKind.onnx,
-      spec,
-      (f, p) async {
-        final decoded = await _decode(await _readBytes(f));
-        final out = await _runEnhance(spec, decoded);
-        final png = await runOffThread(() => img.encodePng(out));
-        return (png, 'png', 'image/png', null);
-      },
-    );
+_MlTool _enhanceTool(
+  String id,
+  String label,
+  String description,
+  ModelSpec spec, {
+  List<String> accepts = _photos,
+}) => _MlTool(
+  _meta(id, label, Icons.auto_awesome, description, accepts),
+  EngineKind.onnx,
+  spec,
+  (f, p) async {
+    final decoded = await _decode(await _readBytes(f));
+    final out = await _runEnhance(spec, decoded);
+    final png = await runOffThread(() => img.encodePng(out));
+    return (png, 'png', 'image/png', null);
+  },
+);
 
 /// Rect-mask inpaint tool (remove-objects/watermark/cleanup/repair).
-_MlTool _inpaintTool(String id, String label, IconData icon,
-        String description) =>
-    _MlTool(
-      _meta(id, label, icon, description, _photos, params: _rectParams),
-      EngineKind.onnx,
-      _inpaintModel,
-      (f, p) async {
-        final decoded = await _decode(await _readBytes(f));
-        final out = await _runInpaint(decoded, _rectFromParams(p));
-        final png = await runOffThread(() => img.encodePng(out));
-        return (png, 'png', 'image/png', null);
-      },
-    );
+_MlTool _inpaintTool(
+  String id,
+  String label,
+  IconData icon,
+  String description,
+) => _MlTool(
+  _meta(id, label, icon, description, _photos, params: _rectParams),
+  EngineKind.onnx,
+  _inpaintModel,
+  (f, p) async {
+    final decoded = await _decode(await _readBytes(f));
+    final out = await _runInpaint(decoded, _rectFromParams(p));
+    final png = await runOffThread(() => img.encodePng(out));
+    return (png, 'png', 'image/png', null);
+  },
+);
 
 /// Every ML image tool. The single registration list for this block.
 List<ToolModule> buildImageMlTools() => [
   _segTool(
-    'blur-background', 'Blur Background',
+    'blur-background',
+    'Blur Background',
     'Keep the subject sharp and blur everything behind it.',
     params: const [
       ToolParam(key: 'blurRadius', label: 'Blur strength', defaultValue: 12),
     ],
-    compose: (decoded, mask, p) => runOffThread(() => ml.applyMask(
-        decoded, mask,
+    compose: (decoded, mask, p) => runOffThread(
+      () => ml.applyMask(
+        decoded,
+        mask,
         background: ml.MaskBackground.blur,
-        blurRadius: _intParam(p, 'blurRadius', 12))),
+        blurRadius: _intParam(p, 'blurRadius', 12),
+      ),
+    ),
   ),
   _segTool(
-    'change-bg-photo', 'Change Background',
+    'change-bg-photo',
+    'Change Background',
     'Replace the photo background with a solid color.',
     params: const [
       ToolParam(
-          key: 'color',
-          label: 'Background color (hex)',
-          type: ToolParamType.text,
-          defaultText: '#FFFFFFFF'),
+        key: 'color',
+        label: 'Background color (hex)',
+        type: ToolParamType.text,
+        defaultText: '#FFFFFFFF',
+      ),
     ],
-    compose: (decoded, mask, p) => runOffThread(() => ml.applyMask(
-        decoded, mask,
+    compose: (decoded, mask, p) => runOffThread(
+      () => ml.applyMask(
+        decoded,
+        mask,
         background: ml.MaskBackground.color,
-        color: ml.parseColor(_textParam(p, 'color', '#FFFFFFFF')))),
+        color: ml.parseColor(_textParam(p, 'color', '#FFFFFFFF')),
+      ),
+    ),
   ),
-  _inpaintTool('cleanup-picture', 'Cleanup Picture', Icons.cleaning_services,
-      'Remove a blemish or distraction from a chosen region.'),
-  _enhanceTool('colorize-photo', 'Colorize Photo',
-      'Colorize a black-and-white photo with an on-device model.',
-      _colorizeModel),
+  _inpaintTool(
+    'cleanup-picture',
+    'Cleanup Picture',
+    Icons.cleaning_services,
+    'Remove a blemish or distraction from a chosen region.',
+  ),
+  _enhanceTool(
+    'colorize-photo',
+    'Colorize Photo',
+    'Colorize a black-and-white photo with an on-device model.',
+    _colorizeModel,
+  ),
   _MlTool(
-    _meta('identify', 'Identify Photo', Icons.category,
-        'Recognize what a photo shows — objects, scene, or food — and name it.',
-        const ['jpg', 'jpeg', 'png', 'webp']),
+    _meta(
+      'identify',
+      'Identify Photo',
+      Icons.category,
+      'Recognize what a photo shows — objects, scene, or food — and name it.',
+      const ['jpg', 'jpeg', 'png', 'webp'],
+    ),
     EngineKind.mlkit,
     null,
     (f, p) async {
       final tags = await getIt<MlKitEngine>().labelImage(f.path);
       if (tags.isEmpty) {
-        throw const ToolException(
-            "Couldn't recognize anything in this photo.");
+        throw const ToolException("Couldn't recognize anything in this photo.");
       }
       final text = tags.map((t) => t.label).join(', ');
       return (Uint8List.fromList(text.codeUnits), 'txt', 'text/plain', text);
     },
   ),
   _segTool(
-    'make-background-transparent', 'Transparent Background',
+    'make-background-transparent',
+    'Transparent Background',
     'Cut out the subject onto a transparent background.',
-    compose: (decoded, mask, p) => runOffThread(() => ml.applyMask(
-        decoded, mask,
-        background: ml.MaskBackground.transparent)),
+    compose: (decoded, mask, p) => runOffThread(
+      () => ml.applyMask(
+        decoded,
+        mask,
+        background: ml.MaskBackground.transparent,
+      ),
+    ),
   ),
   _segTool(
-    'profile-photo', 'Profile Photo Maker',
+    'profile-photo',
+    'Profile Photo Maker',
     'Cut out the subject and place it on a round colored disc.',
     params: const [
       ToolParam(
-          key: 'color',
-          label: 'Disc color (hex)',
-          type: ToolParamType.text,
-          defaultText: '#FFE5E7EB'),
+        key: 'color',
+        label: 'Disc color (hex)',
+        type: ToolParamType.text,
+        defaultText: '#FFE5E7EB',
+      ),
     ],
-    compose: (decoded, mask, p) => runOffThread(() => ml.profilePhoto(
-        decoded, mask,
-        background: ml.parseColor(_textParam(p, 'color', '#FFE5E7EB')))),
+    compose: (decoded, mask, p) => runOffThread(
+      () => ml.profilePhoto(
+        decoded,
+        mask,
+        background: ml.parseColor(_textParam(p, 'color', '#FFE5E7EB')),
+      ),
+    ),
   ),
   _segTool(
-    'remove-bg', 'Remove Background',
+    'remove-bg',
+    'Remove Background',
     'Erase the photo background, keeping only the subject.',
-    compose: (decoded, mask, p) => runOffThread(() => ml.applyMask(
-        decoded, mask,
-        background: ml.MaskBackground.transparent)),
+    compose: (decoded, mask, p) => runOffThread(
+      () => ml.applyMask(
+        decoded,
+        mask,
+        background: ml.MaskBackground.transparent,
+      ),
+    ),
   ),
-  _inpaintTool('remove-objects', 'Remove Objects', Icons.auto_fix_normal,
-      'Erase an object inside a chosen region and fill the gap.'),
+  _inpaintTool(
+    'remove-objects',
+    'Remove Objects',
+    Icons.auto_fix_normal,
+    'Erase an object inside a chosen region and fill the gap.',
+  ),
   _MlTool(
-    _meta('remove-person', 'Remove Person', Icons.person_remove,
-        'Detect the main person and erase them from the photo.', _photos),
+    _meta(
+      'remove-person',
+      'Remove Person',
+      Icons.person_remove,
+      'Detect the main person and erase them from the photo.',
+      _photos,
+    ),
     EngineKind.onnx,
     _inpaintModel,
     (f, p) async {
@@ -316,15 +383,25 @@ List<ToolModule> buildImageMlTools() => [
       for (var i = 0; i < fill.length; i++) {
         fill[i] = mask[i] >= 0.5 ? 1.0 : 0.0;
       }
-      final out = await getIt<OnnxEngine>().inpaint(model.filePath, image,
-          ImageTensor(fill, 1, decoded.height, decoded.width));
-      final png = await runOffThread(() => img.encodePng(ml.tensorToImage(out)));
+      final out = await getIt<OnnxEngine>().inpaint(
+        model.filePath,
+        image,
+        ImageTensor(fill, 1, decoded.height, decoded.width),
+      );
+      final png = await runOffThread(
+        () => img.encodePng(ml.tensorToImage(out)),
+      );
       return (png, 'png', 'image/png', null);
     },
   ),
   _MlTool(
-    _meta('remove-text-photo', 'Remove Text from Photo', Icons.font_download_off,
-        'Find text in the photo (OCR) and erase it.', _photos),
+    _meta(
+      'remove-text-photo',
+      'Remove Text from Photo',
+      Icons.font_download_off,
+      'Find text in the photo (OCR) and erase it.',
+      _photos,
+    ),
     EngineKind.onnx,
     _inpaintModel,
     (f, p) async {
@@ -340,16 +417,32 @@ List<ToolModule> buildImageMlTools() => [
       return (png, 'png', 'image/png', null);
     },
   ),
-  _inpaintTool('remove-watermark-photo', 'Remove Watermark', Icons.layers_clear,
-      'Erase a watermark inside a chosen region and fill the gap.'),
-  _inpaintTool('repair-defects', 'Repair Old Photo', Icons.healing,
-      'Fill scratches or damage inside a chosen region.'),
-  _enhanceTool('sharpen', 'Sharpen Image',
-      'Sharpen a soft photo with an on-device restoration model.',
-      _deblurModel),
+  _inpaintTool(
+    'remove-watermark-photo',
+    'Remove Watermark',
+    Icons.layers_clear,
+    'Erase a watermark inside a chosen region and fill the gap.',
+  ),
+  _inpaintTool(
+    'repair-defects',
+    'Repair Old Photo',
+    Icons.healing,
+    'Fill scratches or damage inside a chosen region.',
+  ),
+  _enhanceTool(
+    'sharpen',
+    'Sharpen Image',
+    'Sharpen a soft photo with an on-device restoration model.',
+    _deblurModel,
+  ),
   _MlTool(
-    _meta('tiff-to-text', 'TIFF to Text', Icons.text_snippet,
-        'Read the text out of a TIFF scan (OCR).', const ['tiff', 'tif']),
+    _meta(
+      'tiff-to-text',
+      'TIFF to Text',
+      Icons.text_snippet,
+      'Read the text out of a TIFF scan (OCR).',
+      const ['tiff', 'tif'],
+    ),
     EngineKind.mlkit,
     null,
     (f, p) async {
@@ -370,9 +463,13 @@ List<ToolModule> buildImageMlTools() => [
     },
   ),
   _MlTool(
-    _meta('to-text', 'Image to Text', Icons.image_search,
-        'Read the text out of a photo or screenshot (OCR).',
-        ['jpg', 'jpeg', 'png', 'webp']),
+    _meta(
+      'to-text',
+      'Image to Text',
+      Icons.image_search,
+      'Read the text out of a photo or screenshot (OCR).',
+      ['jpg', 'jpeg', 'png', 'webp'],
+    ),
     EngineKind.mlkit,
     null,
     (f, p) async {
@@ -389,36 +486,46 @@ List<ToolModule> buildImageMlTools() => [
     },
   ),
   _MlTool(
-    _meta('translate', 'Translate Image Text', Icons.translate,
-        'Read the text in a photo and translate it on-device.',
-        ['jpg', 'jpeg', 'png', 'webp'],
-        params: const [
-          ToolParam(
-              key: 'from',
-              label: 'From language (code, e.g. es)',
-              type: ToolParamType.text,
-              defaultText: ''),
-          ToolParam(
-              key: 'to',
-              label: 'To language (code)',
-              type: ToolParamType.text,
-              defaultText: 'en'),
-        ]),
+    _meta(
+      'translate',
+      'Translate Image Text',
+      Icons.translate,
+      'Read the text in a photo and translate it on-device.',
+      ['jpg', 'jpeg', 'png', 'webp'],
+      params: const [
+        ToolParam(
+          key: 'from',
+          label: 'From language (code, e.g. es)',
+          type: ToolParamType.text,
+          defaultText: '',
+        ),
+        ToolParam(
+          key: 'to',
+          label: 'To language (code)',
+          type: ToolParamType.text,
+          defaultText: 'en',
+        ),
+      ],
+    ),
     EngineKind.mlkit,
     null,
     (f, p) async {
       final from = _textParam(p, 'from', '');
       if (from.isEmpty) {
         throw const ToolException(
-            "Enter the source language code (e.g. 'es' for Spanish).");
+          "Enter the source language code (e.g. 'es' for Spanish).",
+        );
       }
       final mlkit = getIt<MlKitEngine>();
       final ocr = await mlkit.recognizeText(f.path);
       if (ocr.text.trim().isEmpty) {
         throw const ToolException('No text found in this image.');
       }
-      final translated = await mlkit.translate(ocr.text,
-          from: from, to: _textParam(p, 'to', 'en'));
+      final translated = await mlkit.translate(
+        ocr.text,
+        from: from,
+        to: _textParam(p, 'to', 'en'),
+      );
       return (
         Uint8List.fromList(translated.codeUnits),
         'txt',
@@ -427,11 +534,16 @@ List<ToolModule> buildImageMlTools() => [
       );
     },
   ),
-  _enhanceTool('unblur', 'Unblur Image',
-      'Deblur a shaky or out-of-focus photo with an on-device model.',
-      _deblurModel),
-  _enhanceTool('upscale', 'Upscale Image',
-      'Upscale a photo 4× with an on-device super-resolution model.',
-      _upscaleModel,
-      keywords: ['bigger', 'enlarge', 'sharper', 'resolution', 'hd']),
+  _enhanceTool(
+    'unblur',
+    'Unblur Image',
+    'Deblur a shaky or out-of-focus photo with an on-device model.',
+    _deblurModel,
+  ),
+  _enhanceTool(
+    'upscale',
+    'Upscale Image',
+    'Upscale a photo 4× with an on-device super-resolution model.',
+    _upscaleModel,
+  ),
 ];

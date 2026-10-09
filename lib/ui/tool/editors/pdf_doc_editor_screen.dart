@@ -1,3 +1,9 @@
+/// The WYSIWYG editor behind `pdf/create` and `pdf/edit`. Once a document is
+/// open it wears the PDF workspace's Build chrome (element pill rail, page
+/// stage with nav pills, one Export) so creating a PDF feels like the same
+/// workspace.
+library;
+
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -20,6 +26,8 @@ import 'package:anvil/ui/tool/editors/pdf_doc_model.dart';
 import 'package:anvil/ui/tool/editors/pdf_overlay_painter.dart';
 import 'package:anvil/ui/tool/image_canvas.dart';
 import 'package:anvil/ui/tool/job_controller.dart';
+import 'package:anvil/ui/tool/workspace/workspace_model.dart';
+import 'package:anvil/ui/tool/workspace/workspace_widgets.dart';
 import 'package:anvil/ui/widgets/slab.dart';
 
 /// Whether the editor builds a new document or edits an existing one.
@@ -49,8 +57,7 @@ class PdfDocEditorScreen extends ConsumerStatefulWidget {
   final PdfDocMode mode;
 
   @override
-  ConsumerState<PdfDocEditorScreen> createState() =>
-      _PdfDocEditorScreenState();
+  ConsumerState<PdfDocEditorScreen> createState() => _PdfDocEditorScreenState();
 }
 
 const _palette = <Color>[
@@ -122,7 +129,9 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
     final rec = ui.PictureRecorder();
     final canvas = Canvas(rec);
     canvas.drawRect(
-        const Rect.fromLTWH(0, 0, 8, 8), Paint()..color = Colors.white);
+      const Rect.fromLTWH(0, 0, 8, 8),
+      Paint()..color = Colors.white,
+    );
     final pic = rec.endRecording();
     final img = await pic.toImage(8, 8);
     final data = await img.toByteData(format: ui.ImageByteFormat.png);
@@ -140,9 +149,7 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
 
   void _startCreate(double w, double h) {
     setState(() {
-      _doc = DocModel([
-        DocPage(sizePt: (w: w, h: h)),
-      ]);
+      _doc = DocModel([DocPage(sizePt: (w: w, h: h))]);
       _page = 0;
       _undo.clear();
       _redo.clear();
@@ -177,10 +184,9 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
         try {
           bg = (await e.renderPage(bytes, i)).bytes;
         } catch (_) {}
-        pages.add(DocPage(
-          sizePt: (w: info.width, h: info.height),
-          background: bg,
-        ));
+        pages.add(
+          DocPage(sizePt: (w: info.width, h: info.height), background: bg),
+        );
       }
       setState(() {
         _pdfFile = f;
@@ -231,29 +237,26 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
 
   // ── Coordinate mapping ─────────────────────────────────────────────────────
 
-  double get _s =>
-      _displayRect.width <= 0 || _pagePt.width <= 0
-          ? 1.0
-          : _displayRect.width / _pagePt.width;
+  double get _s => _displayRect.width <= 0 || _pagePt.width <= 0
+      ? 1.0
+      : _displayRect.width / _pagePt.width;
 
   Offset _toPt(Offset canvas) => Offset(
-        (canvas.dx - _displayRect.left) / _s,
-        (canvas.dy - _displayRect.top) / _s,
-      );
+    (canvas.dx - _displayRect.left) / _s,
+    (canvas.dy - _displayRect.top) / _s,
+  );
 
-  Offset _toCanvas(Offset pt) => Offset(
-        pt.dx * _s + _displayRect.left,
-        pt.dy * _s + _displayRect.top,
-      );
+  Offset _toCanvas(Offset pt) =>
+      Offset(pt.dx * _s + _displayRect.left, pt.dy * _s + _displayRect.top);
 
   Rect _ptBounds(DocElement el) => switch (el) {
-        TextEl t => _textBounds(t),
-        ImageEl i => i.rectPt,
-        HighlightEl h => h.rectPt,
-        BlackoutEl b => b.rectPt,
-        ShapeEl sh => sh.rectPt,
-        StrokeEl s => _strokeBounds(s),
-      };
+    TextEl t => _textBounds(t),
+    ImageEl i => i.rectPt,
+    HighlightEl h => h.rectPt,
+    BlackoutEl b => b.rectPt,
+    ShapeEl sh => sh.rectPt,
+    StrokeEl s => _strokeBounds(s),
+  };
 
   Rect _textBounds(TextEl t) {
     final tp = TextPainter(
@@ -311,11 +314,11 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
 
   void _resizeTo(DocElement el, Offset pt) {
     Rect fix(Rect r) => Rect.fromLTRB(
-          r.left,
-          r.top,
-          pt.dx.clamp(r.left + 8, double.infinity),
-          pt.dy.clamp(r.top + 8, double.infinity),
-        );
+      r.left,
+      r.top,
+      pt.dx.clamp(r.left + 8, double.infinity),
+      pt.dy.clamp(r.top + 8, double.infinity),
+    );
     switch (el) {
       case ImageEl i:
         i.rectPt = fix(i.rectPt);
@@ -368,8 +371,7 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
     switch (_tool) {
       case _Tool.draw:
         _pushUndo();
-        _pendingStroke =
-            StrokeEl(pointsPt: [pt], color: _color, widthPt: 2.5);
+        _pendingStroke = StrokeEl(pointsPt: [pt], color: _color, widthPt: 2.5);
       case _Tool.highlight:
       case _Tool.blackout:
       case _Tool.rect:
@@ -399,7 +401,9 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
       case _Tool.rect:
       case _Tool.line:
         final start = _dragStartPt;
-        if (start != null) setState(() => _pendingRect = Rect.fromPoints(start, pt));
+        if (start != null) {
+          setState(() => _pendingRect = Rect.fromPoints(start, pt));
+        }
       case _Tool.select:
         final sel = _selected;
         final last = _lastPt;
@@ -446,22 +450,26 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
   }
 
   DocElement _makeRectEl(Rect r) => switch (_tool) {
-        _Tool.highlight =>
-          HighlightEl(rectPt: r, color: _color.withValues(alpha: 0.35)),
-        _Tool.blackout => BlackoutEl(rectPt: r, color: Colors.black),
-        _Tool.line => ShapeEl(
-            kind: ShapeKind.line,
-            rectPt: r,
-            color: _color,
-            strokePt: 2.5,
-            filled: false),
-        _ => ShapeEl(
-            kind: ShapeKind.rect,
-            rectPt: r,
-            color: _color,
-            strokePt: 2.5,
-            filled: false),
-      };
+    _Tool.highlight => HighlightEl(
+      rectPt: r,
+      color: _color.withValues(alpha: 0.35),
+    ),
+    _Tool.blackout => BlackoutEl(rectPt: r, color: Colors.black),
+    _Tool.line => ShapeEl(
+      kind: ShapeKind.line,
+      rectPt: r,
+      color: _color,
+      strokePt: 2.5,
+      filled: false,
+    ),
+    _ => ShapeEl(
+      kind: ShapeKind.rect,
+      rectPt: r,
+      color: _color,
+      strokePt: 2.5,
+      filled: false,
+    ),
+  };
 
   void _insertText(Offset pt, String initial) {
     _pushUndo();
@@ -599,6 +607,37 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
     });
   }
 
+  /// Cycles the current page A4 → Letter → Legal → A4 (custom sizes go to A4),
+  /// keeping its elements.
+  void _cycleSize() {
+    final s = _cur.sizePt;
+    final next = switch (pageSizeName(s.w, s.h)) {
+      'A4' => (w: 612.0, h: 792.0),
+      'Letter' => (w: 612.0, h: 1008.0),
+      _ => (w: 595.0, h: 842.0),
+    };
+    _pushUndo();
+    setState(() {
+      final cur = _cur;
+      _doc!.pages[_page] = DocPage(
+        sizePt: next,
+        background: cur.background,
+        elements: cur.elements,
+      );
+      _selected = null;
+    });
+  }
+
+  /// Inserts a deep copy of the current page after it and moves to it.
+  void _duplicatePage() {
+    _pushUndo();
+    setState(() {
+      _doc!.pages.insert(_page + 1, _cur.copy());
+      _page++;
+      _selected = null;
+    });
+  }
+
   // ── Export ─────────────────────────────────────────────────────────────────
 
   Future<void> _run() async {
@@ -626,16 +665,14 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
         files = overlayFiles;
         params = {
           'mode': 'create',
-          'pageSizesJson': jsonEncode(
-              [for (final p in doc.pages) [p.sizePt.w, p.sizePt.h]]),
+          'pageSizesJson': jsonEncode([
+            for (final p in doc.pages) [p.sizePt.w, p.sizePt.h],
+          ]),
           'overlayIndexJson': jsonEncode(indices),
         };
       } else {
         files = [_pdfFile!, ...overlayFiles];
-        params = {
-          'mode': 'edit',
-          'overlayIndexJson': jsonEncode(indices),
-        };
+        params = {'mode': 'edit', 'overlayIndexJson': jsonEncode(indices)};
       }
       if (!mounted) return;
       ref
@@ -659,42 +696,84 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
   Widget _buildIdle(BuildContext context) {
     final c = Theme.of(context).extension<AnvilColors>()!;
     final job = ref.watch(jobProvider);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 8),
-          EditorHeader(title: widget.tool.meta.label),
-          const SizedBox(height: 12),
-          if (_doc == null)
-            Expanded(child: _setup(context))
-          else ...[
-            _toolbar(c),
+    final errors = <Widget>[
+      if (_error != null) ...[
+        const SizedBox(height: 10),
+        Text(_error!, style: TextStyle(color: c.error)),
+      ],
+      if (job is JobFailed) ...[
+        const SizedBox(height: 10),
+        Text(job.message, style: TextStyle(color: c.error)),
+      ],
+    ];
+    if (_doc == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             const SizedBox(height: 8),
-            Expanded(child: _canvas(c)),
-            const SizedBox(height: 8),
-            _pageBar(c),
+            EditorHeader(title: widget.tool.meta.label),
+            const SizedBox(height: 12),
+            Expanded(child: _setup(context)),
+            ...errors,
+            const SizedBox(height: 14),
           ],
-          if (_error != null) ...[
-            const SizedBox(height: 10),
-            Text(_error!, style: TextStyle(color: c.error)),
-          ],
-          if (job is JobFailed) ...[
-            const SizedBox(height: 10),
-            Text(job.message, style: TextStyle(color: c.error)),
-          ],
-          if (_doc != null) ...[
-            const SizedBox(height: 10),
-            PrimaryButton(
-              label: 'Run',
-              icon: Icons.arrow_forward,
-              onPressed: _run,
+        ),
+      );
+    }
+    const pad = EdgeInsets.symmetric(horizontal: 20);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: _header(),
+        ),
+        const SizedBox(height: 14),
+        Padding(padding: pad, child: _toolbar(c)),
+        const SizedBox(height: 12),
+        Expanded(
+          child: Padding(padding: pad, child: _canvas(c)),
+        ),
+        if (errors.isNotEmpty)
+          Padding(
+            padding: pad,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: errors,
             ),
-          ],
-          const SizedBox(height: 14),
-        ],
-      ),
+          ),
+        const SizedBox(height: 12),
+        _sheetBar(c),
+      ],
+    );
+  }
+
+  /// `A4` / `Letter` / `Legal`, else the rounded `w×hpt` of the current page.
+  String _sizeLabel() {
+    final s = _cur.sizePt;
+    return pageSizeName(s.w, s.h) ?? '${s.w.round()}×${s.h.round()}pt';
+  }
+
+  Widget _header() {
+    final n = _doc!.pages.length;
+    return WsHeader(
+      title: _pdfFile?.name ?? 'Untitled.pdf',
+      sub: '${pageCountLabel(n)} · ${_sizeLabel()} · not saved',
+      onBack: () => Navigator.pop(context),
+      actions: [
+        WsChip(
+          icon: Icons.undo,
+          tooltip: 'Undo',
+          onTap: _undo.isEmpty ? null : _undoAction,
+        ),
+        WsChip(
+          icon: Icons.redo,
+          tooltip: 'Redo',
+          onTap: _redo.isEmpty ? null : _redoAction,
+        ),
+      ],
     );
   }
 
@@ -738,76 +817,48 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
               onPressed: () => _startCreate(612, 792),
             ),
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: 240,
+            child: SecondaryButton(
+              label: 'Legal',
+              icon: Icons.description_outlined,
+              onPressed: () => _startCreate(612, 1008),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _toolbar(AnvilColors c) {
-    Widget chip(IconData icon, _Tool t, String tip) => Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: Tooltip(
-            message: tip,
-            child: Material(
-              color: _tool == t ? c.accent : c.container,
-              borderRadius: BorderRadius.circular(AnvilRadii.chip),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => setState(() => _tool = t),
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(icon,
-                      size: 20,
-                      color: _tool == t ? c.onAccent : c.iconStrong),
-                ),
-              ),
-            ),
-          ),
-        );
-    Widget action(IconData icon, VoidCallback? onTap, String tip) => Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: Tooltip(
-            message: tip,
-            child: Material(
-              color: c.container,
-              borderRadius: BorderRadius.circular(AnvilRadii.chip),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: onTap,
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(icon,
-                      size: 20,
-                      color: onTap == null ? c.faint : c.iconStrong),
-                ),
-              ),
-            ),
-          ),
-        );
+    Widget pill(IconData icon, _Tool t, String label) => WsPill(
+      icon: icon,
+      label: label,
+      on: _tool == t,
+      onTap: () => setState(() => _tool = t),
+    );
     return Column(
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              chip(Icons.touch_app, _Tool.select, 'Select'),
-              chip(Icons.text_fields, _Tool.text, 'Text'),
-              chip(Icons.image, _Tool.image, 'Image'),
-              chip(Icons.gesture, _Tool.draw, 'Draw / sign'),
-              chip(Icons.highlight, _Tool.highlight, 'Highlight'),
-              chip(Icons.rectangle, _Tool.blackout, 'Blackout'),
-              chip(Icons.crop_square, _Tool.rect, 'Rectangle'),
-              chip(Icons.horizontal_rule, _Tool.line, 'Line'),
-              chip(Icons.event, _Tool.date, 'Date'),
-              chip(Icons.schedule, _Tool.time, 'Time'),
-              action(Icons.undo, _undo.isEmpty ? null : _undoAction, 'Undo'),
-              action(Icons.redo, _redo.isEmpty ? null : _redoAction, 'Redo'),
-              action(Icons.delete_outline,
-                  _selected == null ? null : _deleteSelected, 'Delete'),
-            ],
-          ),
+        WsPillRail(
+          children: [
+            pill(Icons.touch_app, _Tool.select, 'Select'),
+            pill(Icons.title, _Tool.text, 'Text'),
+            pill(Icons.image, _Tool.image, 'Image'),
+            pill(Icons.gesture, _Tool.draw, 'Sign'),
+            pill(Icons.highlight, _Tool.highlight, 'Highlight'),
+            pill(Icons.rectangle, _Tool.blackout, 'Blackout'),
+            pill(Icons.crop_square, _Tool.rect, 'Rectangle'),
+            pill(Icons.horizontal_rule, _Tool.line, 'Line'),
+            pill(Icons.event, _Tool.date, 'Date'),
+            pill(Icons.schedule, _Tool.time, 'Time'),
+            if (_selected != null)
+              WsPill(
+                icon: Icons.delete,
+                label: 'Delete',
+                onTap: _deleteSelected,
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -849,20 +900,94 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
         borderRadius: BorderRadius.circular(AnvilRadii.panel),
       ),
       clipBehavior: Clip.antiAlias,
-      child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : InteractiveViewer(
-              transformationController: _transform,
-              minScale: 1,
-              maxScale: 5,
-              panEnabled: false,
-              child: ImageCanvas(
-                imageBytes: bg,
-                imagePx: Size(_cur.sizePt.w, _cur.sizePt.h),
-                background: Colors.white,
-                builder: _overlay,
-              ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : InteractiveViewer(
+                      transformationController: _transform,
+                      minScale: 1,
+                      maxScale: 5,
+                      panEnabled: false,
+                      child: ImageCanvas(
+                        imageBytes: bg,
+                        imagePx: Size(_cur.sizePt.w, _cur.sizePt.h),
+                        background: Colors.white,
+                        builder: _overlay,
+                      ),
+                    ),
             ),
+          ),
+          Positioned(left: 0, right: 0, bottom: 12, child: _stageBar()),
+        ],
+      ),
+    );
+  }
+
+  /// Dark page-nav pills floating over the bottom of the stage.
+  Widget _stageBar() {
+    final n = _doc!.pages.length;
+    Widget pill(Widget child, {VoidCallback? onTap, String? tip}) {
+      final p = Material(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(AnvilRadii.chip),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.center,
+            child: child,
+          ),
+        ),
+      );
+      return tip == null ? p : Tooltip(message: tip, child: p);
+    }
+
+    Widget icon(IconData glyph, VoidCallback? onTap, String tip) => pill(
+      Icon(
+        glyph,
+        size: 18,
+        color: onTap == null
+            ? Colors.white.withValues(alpha: 0.35)
+            : Colors.white,
+      ),
+      onTap: onTap,
+      tip: tip,
+    );
+
+    final children = <Widget>[
+      icon(
+        Icons.chevron_left,
+        _page > 0 ? () => _goPage(-1) : null,
+        'Previous page',
+      ),
+      pill(
+        Text(
+          '${_page + 1} / $n',
+          style: AnvilText.mono(12, color: Colors.white),
+        ),
+      ),
+      icon(
+        Icons.chevron_right,
+        _page < n - 1 ? () => _goPage(1) : null,
+        'Next page',
+      ),
+      if (widget.mode == PdfDocMode.create)
+        icon(Icons.add, _addPage, 'Add page'),
+    ];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          children[i],
+        ],
+      ],
     );
   }
 
@@ -944,8 +1069,10 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
             child: Container(
               width: 26,
               height: 26,
-              decoration:
-                  BoxDecoration(color: c.accent, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: c.accent,
+                shape: BoxShape.circle,
+              ),
               child: Icon(Icons.open_in_full, size: 14, color: c.onAccent),
             ),
           ),
@@ -960,8 +1087,10 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
             child: Container(
               width: 26,
               height: 26,
-              decoration:
-                  BoxDecoration(color: c.accent, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: c.accent,
+                shape: BoxShape.circle,
+              ),
               child: Icon(Icons.edit, size: 14, color: c.onAccent),
             ),
           ),
@@ -969,42 +1098,53 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
     ];
   }
 
-  Widget _pageBar(AnvilColors c) {
+  /// Bottom bar: page-size / delete / duplicate pills (create only) and the
+  /// single Export.
+  Widget _sheetBar(AnvilColors c) {
     final n = _doc!.pages.length;
-    final isCreate = widget.mode == PdfDocMode.create;
-    return SlabPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: c.container,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AnvilRadii.panel),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            color: c.iconStrong,
-            onPressed: _page > 0 ? () => _goPage(-1) : null,
-          ),
-          Expanded(
-            child: Text('Page ${_page + 1} / $n',
-                textAlign: TextAlign.center,
-                style: AnvilText.mono(13, color: c.onSurface)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            color: c.iconStrong,
-            onPressed: _page < n - 1 ? () => _goPage(1) : null,
-          ),
-          if (isCreate) ...[
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              color: n > 1 ? c.iconStrong : c.faint,
-              tooltip: 'Delete page',
-              onPressed: n > 1 ? _deletePage : null,
+          if (widget.mode == PdfDocMode.create) ...[
+            WsPillRail(
+              children: [
+                WsPill(
+                  icon: Icons.photo_size_select_large,
+                  label: _sizeLabel(),
+                  raised: true,
+                  onTap: _cycleSize,
+                ),
+                if (n > 1)
+                  WsPill(
+                    icon: Icons.delete,
+                    label: 'Delete page',
+                    raised: true,
+                    onTap: _deletePage,
+                  ),
+                WsPill(
+                  icon: Icons.content_copy,
+                  label: 'Duplicate',
+                  raised: true,
+                  onTap: _duplicatePage,
+                ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.add),
-              color: c.iconStrong,
-              tooltip: 'Add page',
-              onPressed: _addPage,
-            ),
+            const SizedBox(height: 12),
           ],
+          PrimaryButton(
+            label: 'Export',
+            detail: '· ${pageCountLabel(n)}',
+            onPressed: _run,
+          ),
         ],
       ),
     );
@@ -1039,8 +1179,7 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
                       filled: true,
                       fillColor: c.container,
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(AnvilRadii.control),
+                        borderRadius: BorderRadius.circular(AnvilRadii.control),
                         borderSide: BorderSide.none,
                       ),
                     ),
@@ -1054,8 +1193,9 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
                             padding: const EdgeInsets.only(right: 6),
                             child: Material(
                               color: el.family == f ? c.accent : c.container,
-                              borderRadius:
-                                  BorderRadius.circular(AnvilRadii.chip),
+                              borderRadius: BorderRadius.circular(
+                                AnvilRadii.chip,
+                              ),
                               clipBehavior: Clip.antiAlias,
                               child: InkWell(
                                 onTap: () {
@@ -1065,13 +1205,15 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
                                 child: SizedBox(
                                   height: 42,
                                   child: Center(
-                                    child: Text(f,
-                                        style: TextStyle(
-                                          color: el.family == f
-                                              ? c.onAccent
-                                              : c.onSurface,
-                                          fontFamily: flutterFamily(f),
-                                        )),
+                                    child: Text(
+                                      f,
+                                      style: TextStyle(
+                                        color: el.family == f
+                                            ? c.onAccent
+                                            : c.onSurface,
+                                        fontFamily: flutterFamily(f),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1108,8 +1250,7 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
                               color: color,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color:
-                                    el.color == color ? c.accent : c.faint,
+                                color: el.color == color ? c.accent : c.faint,
                                 width: el.color == color ? 3 : 1,
                               ),
                             ),
@@ -1156,7 +1297,12 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
     }
   }
 
-  Widget _sheetToggle(AnvilColors c, String label, bool on, VoidCallback onTap) {
+  Widget _sheetToggle(
+    AnvilColors c,
+    String label,
+    bool on,
+    VoidCallback onTap,
+  ) {
     return Material(
       color: on ? c.accent : c.container,
       borderRadius: BorderRadius.circular(AnvilRadii.chip),
@@ -1166,8 +1312,10 @@ class _PdfDocEditorScreenState extends ConsumerState<PdfDocEditorScreen> {
         child: SizedBox(
           height: 44,
           child: Center(
-            child: Text(label,
-                style: TextStyle(color: on ? c.onAccent : c.onSurface)),
+            child: Text(
+              label,
+              style: TextStyle(color: on ? c.onAccent : c.onSurface),
+            ),
           ),
         ),
       ),

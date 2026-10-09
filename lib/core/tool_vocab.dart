@@ -15,6 +15,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:anvil/core/tool_guide.dart';
 import 'package:anvil/core/tool_module.dart';
 
 /// Words that carry no tool signal; they would otherwise score every tool.
@@ -94,7 +95,7 @@ List<String> needleTriggersFor(ToolMeta meta) {
   final vocab = <String>{
     for (final w in meta.id.split('-'))
       if (w.length >= 3) w,
-    ...meta.keywords,
+    ...?guideFor(meta.qualifiedId)?.keywords,
   };
   final words = <String>{...vocab};
   toolSynonyms.forEach((phrase, mapped) {

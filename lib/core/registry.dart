@@ -9,24 +9,30 @@ import 'package:anvil/tools/video/video_tools.dart';
 import 'package:anvil/tools/write/write_tools.dart';
 
 /// Holds every registered tool and answers lookups for the home grid, search,
-/// and (Phase 3) the agent.
+/// and (Phase 3) the agent. [internal] tools (e.g. the PDF workspace export)
+/// are resolvable by [byId] — so history rows and re-runs label and route
+/// them — but never listed: [all] and [byCategory] cover [all] only.
 class ToolRegistry {
-  ToolRegistry(this.all);
+  ToolRegistry(this.all, {this.internal = const []});
   final List<ToolModule> all;
+  final List<ToolModule> internal;
 
   /// Looks a tool up by bare id (first match) or by qualified
   /// `<category>/<id>` (exact) — slugs like `compress` repeat across
   /// categories, so persisted references MUST use [ToolMeta.qualifiedId].
-  ToolModule? byId(String id) {
+  /// Registered tools win over [internal] ones.
+  ToolModule? byId(String id) => _find(all, id) ?? _find(internal, id);
+
+  static ToolModule? _find(List<ToolModule> tools, String id) {
     final slash = id.indexOf('/');
     if (slash > 0) {
       final cat = id.substring(0, slash);
       final slug = id.substring(slash + 1);
-      return all
+      return tools
           .where((t) => t.meta.category.name == cat && t.meta.id == slug)
           .firstOrNull;
     }
-    return all.where((t) => t.meta.id == id).firstOrNull;
+    return tools.where((t) => t.meta.id == id).firstOrNull;
   }
 
   List<ToolModule> byCategory(ToolCategory c) =>
@@ -37,12 +43,12 @@ class ToolRegistry {
 /// to the category builder. Dart has no runtime reflection in release builds, so
 /// this explicit list IS the auto-discovery pattern, made concrete.
 List<ToolModule> buildTools() => [
-      ...buildConverters(),
-      ...buildPdfTools(),
-      ...buildImageNativeTools(),
-      ...buildImageConvertTools(),
-      ...buildVideoTools(),
-      ...buildImageMlTools(),
-      ...buildVideoMlTools(),
-      ...buildWriteTools(),
-    ];
+  ...buildConverters(),
+  ...buildPdfTools(),
+  ...buildImageNativeTools(),
+  ...buildImageConvertTools(),
+  ...buildVideoTools(),
+  ...buildImageMlTools(),
+  ...buildVideoMlTools(),
+  ...buildWriteTools(),
+];

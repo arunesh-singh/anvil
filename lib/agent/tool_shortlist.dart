@@ -6,6 +6,7 @@
 /// host-tested — the same request always produces the same prompt.
 library;
 
+import 'package:anvil/core/tool_guide.dart';
 import 'package:anvil/core/tool_module.dart';
 import 'package:anvil/core/tool_vocab.dart';
 import 'package:anvil/ui/widgets/slab.dart' show categoryLabel;
@@ -34,6 +35,7 @@ List<ToolModule> shortlistTools(
   for (final tool in tools) {
     if (!tool.meta.agentCallable) continue;
     final meta = tool.meta;
+    final guide = guideFor(meta.qualifiedId);
     final idWords = meta.id.split('-');
     final label = meta.label.toLowerCase();
     final category = categoryLabel(meta.category).toLowerCase();
@@ -41,7 +43,7 @@ List<ToolModule> shortlistTools(
     var score = 0;
     for (final token in tokens) {
       if (idWords.contains(token)) score += 4;
-      if (meta.keywords.contains(token)) score += 4;
+      if (guide?.keywords.contains(token) ?? false) score += 4;
       if (label.contains(token)) score += 3;
       if (category.contains(token)) score += 2;
       if (description.contains(token)) score += 1;

@@ -21,4 +21,4 @@
 8. `data/` — `tinywow_catalog.json` (raw scrape), `tool_classification.json` (buckets + engines).
 
 ## One-paragraph summary
-219/259 TinyWow tools run on-device across the roadmap: 140 deterministic (Phase 1, native libs), 23 ML (Phase 1.5, downloaded models), 56 LLM (Phase 3, on-device Gemma). 33 conversions needing LibreOffice/Ghostscript/Calibre/diffusion are **deferred** (no cloud in v1). 7 social-media downloaders are **dropped** (store policy + legal). Architecture copies Gallery's pluggable `CustomTask` registry + on-demand model-delivery stack, in Dart.
+218/259 TinyWow tools run on-device across the roadmap: 139 deterministic (Phase 1, native libs), 23 ML (Phase 1.5, downloaded models), 56 LLM (Phase 3, on-device Gemma). 33 conversions needing LibreOffice/Ghostscript/Calibre/diffusion are **deferred** (no cloud in v1). 7 social-media downloaders are **dropped** (store policy + legal). Architecture copies Gallery's pluggable `CustomTask` registry + on-demand model-delivery stack, in Dart.
