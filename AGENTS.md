@@ -4,7 +4,7 @@
 
 Anvil is a **Flutter, Android-only** toolkit that runs ~85% of [TinyWow](https://tinywow.com)'s 259-tool catalog **fully on-device** — offline, private, zero per-use cost — plus an on-device LLM assistant that drives those tools by natural language. 220 tools are registered today (`test/registry_test.dart:63`): 11 converter, 34 pdf, 69 image, 52 video, 54 write.
 
-Shipped: Phase 0 (registry/DI/shell), Phase 1 (deterministic tools), Phase 1.5 (ML tools), Phase 2 (model delivery), Phase 3 (agent). Current version `1.0.0-rc.1+3` (`pubspec.yaml:19`).
+Shipped: Phase 0 (registry/DI/shell), Phase 1 (deterministic tools), Phase 1.5 (ML tools), Phase 2 (model delivery), Phase 3 (agent). Current version `1.0.0-rc.3+6` (`pubspec.yaml:19`).
 
 Locked decisions live in `DECISIONS.md` (D1–D7) — **do not relitigate**: Flutter/Android-first (D1), no Syncfusion (D3), LGPL ffmpeg fork with no v1 fallback (D4), **no cloud in v1** (D5), guided agent chains only (D6), codename Anvil (D7). D6 was amended 2026-09-19: **the confirm gate is gone** — a validated tool call executes immediately; Stop is the only brake. Code referring to a "confirm step" is stale comment text, not behaviour.
 
