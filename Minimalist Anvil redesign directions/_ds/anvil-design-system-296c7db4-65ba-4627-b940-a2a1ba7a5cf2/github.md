@@ -19,4 +19,5 @@ date: 2026-09-18T19:43:18Z
 | `ui_kits/anvil-app/HistoryScreen.jsx` | `lib/ui/history/history_screen.dart` |
 | `ui_kits/anvil-app/SettingsScreen.jsx` | `lib/ui/settings/settings_screen.dart` |
 | `explorations/pdf-workspace.html` (current column) | `lib/ui/tool/editors/pdf_merge_editor_screen.dart`, `pdf_pages_editor_screen.dart`, `pdf_compress_screen.dart`, `editor_scaffold.dart` |
+| `explorations/tools-workspace.html` (today column) | `lib/ui/tool/editors/crop_editor_screen.dart`, `split_editor_screen.dart`, `collage_editor_screen.dart`, `generic_tool_screen.dart`, params from `lib/tools/{image,video,converters,write}/*.dart` |
 | `tokens/*.css`, `components/**` | `lib/ui/tokens.dart`, `lib/ui/theme.dart`, `lib/ui/widgets/slab.dart` |

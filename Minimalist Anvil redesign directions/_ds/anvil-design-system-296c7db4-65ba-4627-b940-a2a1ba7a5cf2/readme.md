@@ -207,6 +207,7 @@ Dialog, Tooltip, Switch, Slider, Toast queue, bottom navigation, FAB.
 
 ### Explorations — `explorations/`
 - `explorations/pdf-workspace.html` — current PDF editors vs. two redesign directions.
+- `explorations/tools-workspace.html` — image, video, data and writing tools: today vs. redesign.
 
 ### Templates — `templates/`
 - `templates/anvil-screen/` — a blank Anvil screen (app bar + content column + primary
