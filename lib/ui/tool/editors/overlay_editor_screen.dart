@@ -10,9 +10,9 @@ import 'package:anvil/core/di.dart';
 import 'package:anvil/core/file_service.dart';
 import 'package:anvil/core/tool_io.dart';
 import 'package:anvil/core/tool_module.dart';
-import 'package:anvil/ui/providers.dart';
 import 'package:anvil/ui/tokens.dart';
 import 'package:anvil/ui/tool/editors/editor_scaffold.dart';
+import 'package:anvil/ui/tool/input/input_picker.dart';
 import 'package:anvil/ui/tool/image_canvas.dart';
 import 'package:anvil/ui/tool/job_controller.dart';
 import 'package:anvil/ui/widgets/slab.dart';
@@ -54,20 +54,8 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
   @override
   void initState() {
     super.initState();
-    final shared = ref.read(pendingSharedInputProvider);
-    if (shared != null && _matches(shared)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(pendingSharedInputProvider.notifier).state = null;
-      });
-      _load([shared]);
-    }
-  }
-
-  bool _matches(InputFile f) {
-    final dot = f.name.lastIndexOf('.');
-    if (dot < 0) return false;
-    final ext = f.name.substring(dot + 1).toLowerCase();
-    return widget.tool.meta.acceptedExtensions.contains(ext);
+    final shared = takeSharedInput(ref, widget.tool.meta);
+    if (shared != null) _load([shared]);
   }
 
   Future<Size> _decodeSize(Uint8List bytes) async {
@@ -184,7 +172,9 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
         'rotation': l.rotationDeg,
       });
     }
-    ref.read(jobProvider.notifier).start(
+    ref
+        .read(jobProvider.notifier)
+        .start(
           widget.tool,
           ToolInput(files: List.of(_files), params: {'layers': layers}),
         );
@@ -200,7 +190,25 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
     final theme = Theme.of(context);
     final c = theme.extension<AnvilColors>()!;
     final job = ref.watch(jobProvider);
-    final hasBase = _files.isNotEmpty;
+    if (_files.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            EditorHeader(title: widget.tool.meta.label),
+            Expanded(
+              child: ToolInputPicker(
+                tool: widget.tool,
+                prompt: 'Pick a base image and one or more overlays.',
+                onPicked: (files) => _load(files),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -209,30 +217,26 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
           const SizedBox(height: 8),
           EditorHeader(title: widget.tool.meta.label),
           const SizedBox(height: 16),
-          if (!hasBase)
-            _pickPrompt(context)
-          else ...[
-            _thumbnails(context),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: c.container,
-                  borderRadius: BorderRadius.circular(AnvilRadii.panel),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ImageCanvas(
-                        imageBytes: _bytes.first,
-                        imagePx: _sizes.first,
-                        builder: _canvasOverlay,
-                      ),
+          _thumbnails(context),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: c.container,
+                borderRadius: BorderRadius.circular(AnvilRadii.panel),
               ),
+              clipBehavior: Clip.antiAlias,
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ImageCanvas(
+                      imageBytes: _bytes.first,
+                      imagePx: _sizes.first,
+                      builder: _canvasOverlay,
+                    ),
             ),
-            const SizedBox(height: 12),
-            _controls(context),
-          ],
+          ),
+          const SizedBox(height: 12),
+          _controls(context),
           if (job is JobFailed) ...[
             const SizedBox(height: 12),
             Text(job.message, style: TextStyle(color: c.error)),
@@ -245,35 +249,6 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
           ),
           const SizedBox(height: 16),
         ],
-      ),
-    );
-  }
-
-
-
-  Widget _pickPrompt(BuildContext context) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Pick a base image and one or more overlays.',
-              style: theme.textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: 220,
-              child: PrimaryButton(
-                label: 'Pick images',
-                icon: Icons.add_photo_alternate,
-                onPressed: _pick,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -316,9 +291,11 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
                       child: Container(
                         color: c.accent.withValues(alpha: 0.85),
                         padding: const EdgeInsets.symmetric(vertical: 1),
-                        child: Text('BASE',
-                            textAlign: TextAlign.center,
-                            style: AnvilText.mono(9, color: c.onAccent)),
+                        child: Text(
+                          'BASE',
+                          textAlign: TextAlign.center,
+                          style: AnvilText.mono(9, color: c.onAccent),
+                        ),
                       ),
                     )
                   else
@@ -330,8 +307,11 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
                         child: Container(
                           color: c.container.withValues(alpha: 0.8),
                           padding: const EdgeInsets.all(2),
-                          child: Icon(Icons.push_pin,
-                              size: 14, color: c.iconStrong),
+                          child: Icon(
+                            Icons.push_pin,
+                            size: 14,
+                            color: c.iconStrong,
+                          ),
                         ),
                       ),
                     ),
@@ -351,10 +331,18 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
       runSpacing: 8,
       children: [
         _chip(context, Icons.add_photo_alternate, 'Add', _pick),
-        _chip(context, Icons.delete_outline, 'Delete',
-            hasSel ? _deleteSelected : null),
-        _chip(context, Icons.flip_to_front, 'To front',
-            hasSel ? _bringToFront : null),
+        _chip(
+          context,
+          Icons.delete_outline,
+          'Delete',
+          hasSel ? _deleteSelected : null,
+        ),
+        _chip(
+          context,
+          Icons.flip_to_front,
+          'To front',
+          hasSel ? _bringToFront : null,
+        ),
         _chip(
           context,
           _holdAspect ? Icons.lock : Icons.lock_open,
@@ -365,8 +353,12 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
     );
   }
 
-  Widget _chip(BuildContext context, IconData icon, String label,
-      VoidCallback? onTap) {
+  Widget _chip(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback? onTap,
+  ) {
     final c = Theme.of(context).extension<AnvilColors>()!;
     final enabled = onTap != null;
     return Material(
@@ -380,12 +372,15 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon,
-                  size: 18, color: enabled ? c.iconStrong : c.faint),
+              Icon(icon, size: 18, color: enabled ? c.iconStrong : c.faint),
               const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(
-                      color: enabled ? c.onSurface : c.faint, fontSize: 13)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: enabled ? c.onSurface : c.faint,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -414,8 +409,7 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            for (var i = 0; i < _layers.length; i++)
-              _buildLayer(context, i),
+            for (var i = 0; i < _layers.length; i++) _buildLayer(context, i),
           ],
         ),
       ),
@@ -456,15 +450,21 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
                 Positioned(
                   right: -14,
                   bottom: -14,
-                  child: _handle(context, Icons.open_in_full,
-                      (d) => setState(() => _resize(l, d.globalPosition))),
+                  child: _handle(
+                    context,
+                    Icons.open_in_full,
+                    (d) => setState(() => _resize(l, d.globalPosition)),
+                  ),
                 ),
                 // Rotate (top-right)
                 Positioned(
                   right: -14,
                   top: -14,
-                  child: _handle(context, Icons.rotate_right,
-                      (d) => setState(() => _rotate(l, d.globalPosition))),
+                  child: _handle(
+                    context,
+                    Icons.rotate_right,
+                    (d) => setState(() => _rotate(l, d.globalPosition)),
+                  ),
                 ),
               ],
             ],
@@ -474,18 +474,18 @@ class _OverlayEditorScreenState extends ConsumerState<OverlayEditorScreen> {
     );
   }
 
-  Widget _handle(BuildContext context, IconData icon,
-      void Function(DragUpdateDetails) onPanUpdate) {
+  Widget _handle(
+    BuildContext context,
+    IconData icon,
+    void Function(DragUpdateDetails) onPanUpdate,
+  ) {
     final c = Theme.of(context).extension<AnvilColors>()!;
     return GestureDetector(
       onPanUpdate: onPanUpdate,
       child: Container(
         width: 28,
         height: 28,
-        decoration: BoxDecoration(
-          color: c.accent,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle),
         child: Icon(icon, size: 16, color: c.onAccent),
       ),
     );

@@ -314,6 +314,28 @@ const _qualityParam = ToolParam(
   defaultValue: 90,
 );
 
+const _gapParam = ToolParam(key: 'gap', label: 'Gap between images (px)');
+
+const _backgroundParam = ToolParam(
+  key: 'background',
+  label: 'Background color (hex, #00000000 = transparent)',
+  type: ToolParamType.text,
+  defaultText: '#00000000',
+);
+
+/// Collage/combine grid; omitted gap/background keep the old edge-to-edge,
+/// transparent output.
+Future<Uint8List> _grid(
+  ImageEngine e,
+  List<Uint8List> images,
+  Map<String, dynamic> p,
+) => e.grid(
+  images,
+  columns: p['columns'] as int,
+  gap: p['gap'] as int,
+  background: p['background'] as String,
+);
+
 /// A single-image tool that just re-encodes to a fixed [format].
 _SingleImage _convertTool(
   String id,
@@ -367,12 +389,21 @@ List<ToolModule> buildImageNativeTools() => [
           type: ToolParamType.text,
           defaultText: '#FF000000',
         ),
+        ToolParam(
+          key: 'style',
+          label: 'Style',
+          type: ToolParamType.choice,
+          defaultText: 'even',
+          choices: ['even', 'polaroid', 'square'],
+          helperText: 'polaroid = thick bottom; square = padded to a square',
+        ),
       ],
     ),
     (e, src, ext, p) => e.border(
       src,
       sizePx: p['sizePx'] as int,
       color: p['color'] as String,
+      style: p['style'] as String,
       format: ext,
     ),
     _same,
@@ -386,10 +417,12 @@ List<ToolModule> buildImageNativeTools() => [
       _images,
       params: const [
         ToolParam(key: 'columns', label: 'Columns', defaultValue: 2),
+        _gapParam,
+        _backgroundParam,
       ],
       acceptsMultiple: true,
     ),
-    (e, images, p) => e.grid(images, columns: p['columns'] as int),
+    _grid,
   ),
   _MultiImage(
     _meta(
@@ -398,10 +431,14 @@ List<ToolModule> buildImageNativeTools() => [
       Icons.view_week,
       'Combine images side by side into one image (0 columns = one row).',
       _images,
-      params: const [ToolParam(key: 'columns', label: 'Columns (0 = one row)')],
+      params: const [
+        ToolParam(key: 'columns', label: 'Columns (0 = one row)'),
+        _gapParam,
+        _backgroundParam,
+      ],
       acceptsMultiple: true,
     ),
-    (e, images, p) => e.grid(images, columns: p['columns'] as int),
+    _grid,
   ),
   _SingleImage(
     _meta(
@@ -430,6 +467,19 @@ List<ToolModule> buildImageNativeTools() => [
         ToolParam(key: 'y', label: 'Top (px)'),
         ToolParam(key: 'width', label: 'Width (px)', defaultValue: 512),
         ToolParam(key: 'height', label: 'Height (px)', defaultValue: 512),
+        ToolParam(
+          key: 'rotate',
+          label: 'Rotate first (degrees clockwise)',
+          max: 270,
+          helperText: '0, 90, 180 or 270',
+        ),
+        ToolParam(
+          key: 'flip',
+          label: 'Flip first',
+          type: ToolParamType.choice,
+          defaultText: 'none',
+          choices: ['none', 'horizontal', 'vertical'],
+        ),
       ],
     ),
     (e, src, ext, p) => e.crop(
@@ -438,6 +488,8 @@ List<ToolModule> buildImageNativeTools() => [
       y: p['y'] as int,
       width: p['width'] as int,
       height: p['height'] as int,
+      rotate: p['rotate'] as int,
+      flip: p['flip'] as String,
       format: ext,
     ),
     _same,

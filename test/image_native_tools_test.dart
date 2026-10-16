@@ -34,7 +34,9 @@ void main() {
     fake = _FakeChannel();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-            const MethodChannel('anvil/image'), fake.handle);
+          const MethodChannel('anvil/image'),
+          fake.handle,
+        );
   });
 
   tearDown(() {
@@ -65,6 +67,42 @@ void main() {
       expect((resize.arguments as Map)['width'], 100);
       expect((crop.arguments as Map)['height'], 4);
       expect((border.arguments as Map)['color'], '#80FF0000');
+    });
+
+    test('crop carries rotate and flip (default none)', () async {
+      await engine.crop(src, x: 0, y: 0, width: 3, height: 4);
+      await engine.crop(
+        src,
+        x: 1,
+        y: 2,
+        width: 3,
+        height: 4,
+        rotate: 270,
+        flip: 'horizontal',
+      );
+      final [plain, oriented] = fake.calls;
+      expect((plain.arguments as Map)['rotate'], 0);
+      expect((plain.arguments as Map)['flip'], 'none');
+      expect((oriented.arguments as Map)['rotate'], 270);
+      expect((oriented.arguments as Map)['flip'], 'horizontal');
+      expect((oriented.arguments as Map)['x'], 1);
+    });
+
+    test('grid carries columns, gap and background', () async {
+      await engine.grid([src, src], columns: 2);
+      await engine.grid(
+        [src, src],
+        columns: 0,
+        gap: 12,
+        background: '#FFE1E5FF',
+      );
+      final [plain, styled] = fake.calls;
+      expect(plain.method, 'grid');
+      expect((plain.arguments as Map)['gap'], 0);
+      expect((plain.arguments as Map)['background'], '#00000000');
+      expect((styled.arguments as Map)['columns'], 0);
+      expect((styled.arguments as Map)['gap'], 12);
+      expect((styled.arguments as Map)['background'], '#FFE1E5FF');
     });
 
     test('split returns every tile', () async {
@@ -106,14 +144,16 @@ void main() {
 
     test('platform errors surface as ToolException', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(const MethodChannel('anvil/image'),
-              (call) async {
-        throw PlatformException(code: 'image_op', message: 'boom');
-      });
+          .setMockMethodCallHandler(const MethodChannel('anvil/image'), (
+            call,
+          ) async {
+            throw PlatformException(code: 'image_op', message: 'boom');
+          });
       expect(
         () => ImageEngine().convert(src, format: 'png'),
-        throwsA(isA<ToolException>()
-            .having((e) => e.message, 'message', 'boom')),
+        throwsA(
+          isA<ToolException>().having((e) => e.message, 'message', 'boom'),
+        ),
       );
     });
   });
@@ -121,35 +161,57 @@ void main() {
   group('native image tools', () {
     test('all 21 native slugs registered under the image category', () {
       const expected = {
-        'add-images', 'border', 'collage-maker', 'combine-maker', 'compress',
-        'crop', 'crop-circle', 'flip', 'grayscale', 'heic-to-jpg',
-        'heic-to-png', 'jpg-to-png', 'jpg-to-webp', 'metadata', 'pixelate',
-        'png-to-jpg', 'png-to-webp', 'resize', 'split', 'webp-to-jpg',
+        'add-images',
+        'border',
+        'collage-maker',
+        'combine-maker',
+        'compress',
+        'crop',
+        'crop-circle',
+        'flip',
+        'grayscale',
+        'heic-to-jpg',
+        'heic-to-png',
+        'jpg-to-png',
+        'jpg-to-webp',
+        'metadata',
+        'pixelate',
+        'png-to-jpg',
+        'png-to-webp',
+        'resize',
+        'split',
+        'webp-to-jpg',
         'webp-to-png',
       };
       final tools = buildImageNativeTools();
       expect(tools.map((t) => t.meta.id).toSet(), expected);
-      expect(
-          tools.every((t) => t.meta.category == ToolCategory.image), isTrue);
+      expect(tools.every((t) => t.meta.category == ToolCategory.image), isTrue);
       expect(tools.every((t) => t.engine == EngineKind.image), isTrue);
     });
 
-    test('grayscale tool streams to ToolSucceeded and writes output',
-        () async {
+    test('grayscale tool streams to ToolSucceeded and writes output', () async {
       await getIt.reset();
       getIt
         ..registerLazySingleton<FileService>(_TempFileService.new)
         ..registerLazySingleton<ImageEngine>(ImageEngine.new);
 
-      final tool = buildImageNativeTools()
-          .firstWhere((t) => t.meta.id == 'grayscale');
-      final inFile =
-          await getIt<FileService>().writeBytes('in.png', [1, 2, 3]);
+      final tool = buildImageNativeTools().firstWhere(
+        (t) => t.meta.id == 'grayscale',
+      );
+      final inFile = await getIt<FileService>().writeBytes('in.png', [1, 2, 3]);
 
       final events = await tool
-          .run(ToolInput(files: [
-            InputFile(path: inFile.path, name: 'in.png', mimeType: 'image/png')
-          ]))
+          .run(
+            ToolInput(
+              files: [
+                InputFile(
+                  path: inFile.path,
+                  name: 'in.png',
+                  mimeType: 'image/png',
+                ),
+              ],
+            ),
+          )
           .toList();
       expect(events.whereType<ToolRunning>(), isNotEmpty);
       final result = (events.last as ToolSucceeded).result;
@@ -164,20 +226,34 @@ void main() {
       getIt
         ..registerLazySingleton<FileService>(_TempFileService.new)
         ..registerLazySingleton<ImageEngine>(ImageEngine.new);
-      final tool = buildImageNativeTools()
-          .firstWhere((t) => t.meta.id == 'add-images');
+      final tool = buildImageNativeTools().firstWhere(
+        (t) => t.meta.id == 'add-images',
+      );
       final base = await getIt<FileService>().writeBytes('a.png', [1, 2, 3]);
       final ov = await getIt<FileService>().writeBytes('b.png', [4, 5, 6]);
 
-      final events = await tool.run(ToolInput(files: [
-        InputFile(path: base.path, name: 'a.png'),
-        InputFile(path: ov.path, name: 'b.png'),
-      ], params: {
-        'layers': [
-          {'fileIndex': 1, 'x': 10, 'y': 20, 'width': 50, 'height': 60,
-              'rotation': 15.0},
-        ],
-      })).toList();
+      final events = await tool
+          .run(
+            ToolInput(
+              files: [
+                InputFile(path: base.path, name: 'a.png'),
+                InputFile(path: ov.path, name: 'b.png'),
+              ],
+              params: {
+                'layers': [
+                  {
+                    'fileIndex': 1,
+                    'x': 10,
+                    'y': 20,
+                    'width': 50,
+                    'height': 60,
+                    'rotation': 15.0,
+                  },
+                ],
+              },
+            ),
+          )
+          .toList();
 
       final call = fake.calls.firstWhere((c) => c.method == 'composite');
       final layers = ((call.arguments as Map)['layers'] as List).cast<Map>();
@@ -189,30 +265,41 @@ void main() {
       await getIt.reset();
     });
 
-    test('add-images with no layers stacks each overlay at native size',
-        () async {
-      await getIt.reset();
-      getIt
-        ..registerLazySingleton<FileService>(_TempFileService.new)
-        ..registerLazySingleton<ImageEngine>(ImageEngine.new);
-      final tool = buildImageNativeTools()
-          .firstWhere((t) => t.meta.id == 'add-images');
-      final base = await getIt<FileService>().writeBytes('a.png', [1, 2, 3]);
-      final ov = await getIt<FileService>().writeBytes('b.png', [4, 5, 6]);
+    test(
+      'add-images with no layers stacks each overlay at native size',
+      () async {
+        await getIt.reset();
+        getIt
+          ..registerLazySingleton<FileService>(_TempFileService.new)
+          ..registerLazySingleton<ImageEngine>(ImageEngine.new);
+        final tool = buildImageNativeTools().firstWhere(
+          (t) => t.meta.id == 'add-images',
+        );
+        final base = await getIt<FileService>().writeBytes('a.png', [1, 2, 3]);
+        final ov = await getIt<FileService>().writeBytes('b.png', [4, 5, 6]);
 
-      final events = await tool.run(ToolInput(files: [
-        InputFile(path: base.path, name: 'a.png'),
-        InputFile(path: ov.path, name: 'b.png'),
-      ])).toList();
+        final events = await tool
+            .run(
+              ToolInput(
+                files: [
+                  InputFile(path: base.path, name: 'a.png'),
+                  InputFile(path: ov.path, name: 'b.png'),
+                ],
+              ),
+            )
+            .toList();
 
-      final call = fake.calls.firstWhere((c) => c.method == 'composite');
-      final layers = ((call.arguments as Map)['layers'] as List).cast<Map>();
-      expect(layers, hasLength(1));
-      expect(layers.first['width'], 0);
-      expect((events.last as ToolSucceeded).result.files.single.name,
-          endsWith('.png'));
-      await getIt.reset();
-    });
+        final call = fake.calls.firstWhere((c) => c.method == 'composite');
+        final layers = ((call.arguments as Map)['layers'] as List).cast<Map>();
+        expect(layers, hasLength(1));
+        expect(layers.first['width'], 0);
+        expect(
+          (events.last as ToolSucceeded).result.files.single.name,
+          endsWith('.png'),
+        );
+        await getIt.reset();
+      },
+    );
   });
 }
 

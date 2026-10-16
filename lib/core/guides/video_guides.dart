@@ -32,7 +32,7 @@ const videoToolGuides = <String, ToolGuide>{
     keywords: ['speech', 'dictation', 'voice', 'recording'],
   ),
   'video/avi-to-gif': ToolGuide(
-    'Use for: AVI to GIF, animated GIF from a AVI. Set `fps` and `width` (px) only if the user gives them. Not for: animated WebP - use video_to_webp.',
+    'Use for: AVI to GIF, animated GIF from a AVI. Set `start`/`duration` (seconds) from the user\'s times, `fps`/`width` only if given. Not for: animated WebP - use video_to_webp.',
     keywords: ['animated', 'meme', 'animation'],
   ),
   'video/avi-to-mkv': ToolGuide(
@@ -49,23 +49,23 @@ const videoToolGuides = <String, ToolGuide>{
     'Use for: AVI to MP4, change a AVI video\'s format to MP4. Not for: animated GIFs - use video_to_gif.',
   ),
   'video/compress': ToolGuide(
-    'Use for: compress a video, reduce video size, smaller for WhatsApp or email. Set `height` (px, default 720) and `quality` (1 best - 31 smallest) only if given. Not for: exact width and height - use video_resize.',
+    'Use for: compress a video, reduce video size, smaller for WhatsApp or email. Set `targetMb` from a size limit (email: 25), `height` (0 = keep) only if given. Not for: exact width and height - use video_resize.',
     keywords: ['size', 'reduce', 'mb', 'whatsapp', 'email', 'lighter'],
   ),
   'video/compress-avi': ToolGuide(
-    'Use for: compress a AVI, reduce AVI size. Set `height` (px, default 720) and `quality` (1 best - 31 smallest) only if given. Not for: other formats - use video_compress.',
+    'Use for: compress a AVI, reduce AVI size. Set `targetMb` from a size limit, `height` (px, 0 = keep) and `quality` (1 best - 31 smallest) only if given. Not for: other formats - use video_compress.',
     keywords: ['size', 'reduce', 'mb'],
   ),
   'video/compress-mkv': ToolGuide(
-    'Use for: compress a MKV, reduce MKV size. Set `height` (px, default 720) and `quality` (1 best - 31 smallest) only if given. Not for: other formats - use video_compress.',
+    'Use for: compress a MKV, reduce MKV size. Set `targetMb` from a size limit, `height` (px, 0 = keep) and `quality` (1 best - 31 smallest) only if given. Not for: other formats - use video_compress.',
     keywords: ['size', 'reduce', 'mb'],
   ),
   'video/compress-mov': ToolGuide(
-    'Use for: compress a MOV, reduce MOV size. Set `height` (px, default 720) and `quality` (1 best - 31 smallest) only if given. Not for: other formats - use video_compress.',
+    'Use for: compress a MOV, reduce MOV size. Set `targetMb` from a size limit, `height` (px, 0 = keep) and `quality` (1 best - 31 smallest) only if given. Not for: other formats - use video_compress.',
     keywords: ['size', 'reduce', 'mb'],
   ),
   'video/cutter': ToolGuide(
-    'Use for: trim a video, cut a clip, keep part of a video. Set `start` and `duration` in seconds from the user\'s times. Not for: removing the sound - use video_mute.',
+    'Use for: trim a video, cut a clip, keep part of a video. Set `start` and `duration` in seconds from the user\'s times; `mute` yes to also drop the sound. Not for: only removing the sound - use video_mute.',
     keywords: ['trim', 'clip', 'shorten', 'snippet', 'excerpt'],
   ),
   'video/extract-audio': ToolGuide(
@@ -92,7 +92,7 @@ const videoToolGuides = <String, ToolGuide>{
     'Use for: MKV to AVI, change a MKV video\'s format to AVI. Not for: animated GIFs - use video_to_gif.',
   ),
   'video/mkv-to-gif': ToolGuide(
-    'Use for: MKV to GIF, animated GIF from a MKV. Set `fps` and `width` (px) only if the user gives them. Not for: animated WebP - use video_to_webp.',
+    'Use for: MKV to GIF, animated GIF from a MKV. Set `start`/`duration` (seconds) from the user\'s times, `fps`/`width` only if given. Not for: animated WebP - use video_to_webp.',
     keywords: ['animated', 'meme', 'animation'],
   ),
   'video/mkv-to-mov': ToolGuide(
@@ -109,7 +109,7 @@ const videoToolGuides = <String, ToolGuide>{
     'Use for: MOV to AVI, change a MOV video\'s format to AVI. Not for: animated GIFs - use video_to_gif.',
   ),
   'video/mov-to-gif': ToolGuide(
-    'Use for: MOV to GIF, animated GIF from a MOV. Set `fps` and `width` (px) only if the user gives them. Not for: animated WebP - use video_to_webp.',
+    'Use for: MOV to GIF, animated GIF from a MOV. Set `start`/`duration` (seconds) from the user\'s times, `fps`/`width` only if given. Not for: animated WebP - use video_to_webp.',
     keywords: ['animated', 'meme', 'animation'],
   ),
   'video/mov-to-mp3': ToolGuide(
@@ -125,7 +125,7 @@ const videoToolGuides = <String, ToolGuide>{
     'Use for: MP4 to AVI, change a MP4 video\'s format to AVI. Not for: animated GIFs - use video_to_gif.',
   ),
   'video/mp4-to-gif': ToolGuide(
-    'Use for: MP4 to GIF, animated GIF from a MP4. Set `fps` and `width` (px) only if the user gives them. Not for: animated WebP - use video_to_webp.',
+    'Use for: MP4 to GIF, animated GIF from a MP4. Set `start`/`duration` (seconds) from the user\'s times, `fps`/`width` only if given. Not for: animated WebP - use video_to_webp.',
     keywords: ['animated', 'meme', 'animation'],
   ),
   'video/mp4-to-mov': ToolGuide(
@@ -163,7 +163,7 @@ const videoToolGuides = <String, ToolGuide>{
     keywords: ['summary', 'tldr', 'lecture', 'meeting', 'recap'],
   ),
   'video/to-gif': ToolGuide(
-    'Use for: video to GIF, make an animated GIF or meme clip. Set `fps` and `width` (px) only if the user gives them. Not for: animated WebP - use video_to_webp.',
+    'Use for: video to GIF, make an animated GIF or meme clip. Set `start`/`duration` (seconds) from the user\'s times, `fps`/`width` only if given. Not for: animated WebP - use video_to_webp.',
     keywords: ['animated', 'meme', 'animation'],
   ),
   'video/to-text': ToolGuide(
@@ -171,7 +171,7 @@ const videoToolGuides = <String, ToolGuide>{
     keywords: ['ocr', 'onscreen', 'frames'],
   ),
   'video/to-webp': ToolGuide(
-    'Use for: video to WebP, animated WebP sticker. Set `fps` and `width` (px) only if the user gives them. Not for: GIF output - use video_to_gif.',
+    'Use for: video to WebP, animated WebP sticker. Set `start`/`duration` (seconds) from the user\'s times, `fps`/`width` only if given. Not for: GIF output - use video_to_gif.',
     keywords: ['sticker', 'animated'],
   ),
   'video/transcribe-podcast': ToolGuide(

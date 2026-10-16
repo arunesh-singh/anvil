@@ -41,11 +41,13 @@ class _FakeLlmEngine implements LlmEngine {
   int get contextTokens => 4096;
 
   @override
-  Future<void> ensureLoaded(String modelPath,
-      {bool supportImage = false,
-      ModelFamily family = ModelFamily.gemma4,
-      int maxTokens = 4096,
-      String? taskId}) async {
+  Future<void> ensureLoaded(
+    String modelPath, {
+    bool supportImage = false,
+    ModelFamily family = ModelFamily.gemma4,
+    int maxTokens = 4096,
+    String? taskId,
+  }) async {
     loadedPath = modelPath;
   }
 
@@ -79,19 +81,19 @@ class _FakeLlmEngine implements LlmEngine {
     required int maxOutputTokens,
     bool supportImage = false,
     ModelFamily family = ModelFamily.gemma4,
-  }) async =>
-      throw UnimplementedError();
+  }) async => throw UnimplementedError();
 }
 
 class _FakeModelManager implements ModelManager {
   @override
-  Future<LoadedModel> ensureReady(ModelSpec spec,
-          {void Function(int received, int total)? onProgress}) async =>
-      LoadedModel(
-        taskId: spec.taskId,
-        variant: _variant,
-        filePath: '/tmp/${spec.taskId}.litertlm',
-      );
+  Future<LoadedModel> ensureReady(
+    ModelSpec spec, {
+    void Function(int received, int total)? onProgress,
+  }) async => LoadedModel(
+    taskId: spec.taskId,
+    variant: _variant,
+    filePath: '/tmp/${spec.taskId}.litertlm',
+  );
 
   @override
   Future<ModelStatus> status(String taskId) async => ModelStatus.cached;
@@ -171,25 +173,29 @@ void main() {
     if (await tempDir.exists()) await tempDir.delete(recursive: true);
   });
 
-  test('write/grammar-fixer prompts the model and saves a .txt output',
-      () async {
-    final tool = _tool('write/grammar-fixer');
-    expect(tool.engine, EngineKind.llm);
-    final result = await _run(
-      tool,
-      const ToolInput(files: [], params: {'text': 'she dont likes apple.'}),
-    );
-    expect(result.text, 'She does not like apples.');
-    expect(result.files.single.name, endsWith('.txt'));
-    expect(result.files.single.mimeType, 'text/plain');
-    expect(await File(result.files.single.path).readAsString(),
-        'She does not like apples.');
-    // The prompt carries both the instruction and the user's text.
-    expect(llm.prompt, contains('Fix all grammar'));
-    expect(llm.prompt, contains('she dont likes apple.'));
-    // The model file resolved through Phase-2 delivery before generating.
-    expect(llm.loadedPath, '/tmp/agent.llm.litertlm');
-  });
+  test(
+    'write/grammar-fixer prompts the model and saves a .txt output',
+    () async {
+      final tool = _tool('write/grammar-fixer');
+      expect(tool.engine, EngineKind.llm);
+      final result = await _run(
+        tool,
+        const ToolInput(files: [], params: {'text': 'she dont likes apple.'}),
+      );
+      expect(result.text, 'She does not like apples.');
+      expect(result.files.single.name, endsWith('.txt'));
+      expect(result.files.single.mimeType, 'text/plain');
+      expect(
+        await File(result.files.single.path).readAsString(),
+        'She does not like apples.',
+      );
+      // The prompt carries both the instruction and the user's text.
+      expect(llm.prompt, contains('Fix all grammar'));
+      expect(llm.prompt, contains('she dont likes apple.'));
+      // The model file resolved through Phase-2 delivery before generating.
+      expect(llm.loadedPath, '/tmp/agent.llm.litertlm');
+    },
+  );
 
   test('write/tone-of-voice threads its tone param into the prompt', () async {
     await _run(
@@ -199,20 +205,91 @@ void main() {
     expect(llm.prompt, contains('playful'));
   });
 
-  test('write/word-counter counts on-device with no model and no output file',
-      () async {
-    final tool = _tool('write/word-counter');
-    expect(tool.engine, EngineKind.dartlib);
-    expect(tool.model, isNull);
-    final result = await _run(
-      tool,
-      const ToolInput(files: [], params: {'text': 'one two three.'}),
-    );
-    expect(result.files, isEmpty);
-    expect(result.text, contains('Words: 3'));
-    // Never touched the language model.
-    expect(llm.prompt, isNull);
+  test(
+    'write/tone-of-voice with only text keeps the original prompt',
+    () async {
+      await _run(
+        _tool('write/tone-of-voice'),
+        const ToolInput(files: [], params: {'text': 'hey there'}),
+      );
+      expect(
+        llm.prompt,
+        'Rewrite the following text in a professional tone. Keep the meaning. '
+        'Return only the rewritten text.\n\nText:\nhey there',
+      );
+    },
+  );
+
+  group('toneOfVoicePrompt', () {
+    test('chip tones become edit instructions, not tones', () {
+      final shorter = toneOfVoicePrompt('x', 'shorter', 'same');
+      expect(shorter, startsWith('Condense'));
+      expect(shorter, isNot(contains('shorter tone')));
+      final clearer = toneOfVoicePrompt('x', 'Clearer', 'same');
+      expect(clearer, contains('clearer: simpler words'));
+      expect(clearer, isNot(contains('tone. Keep')));
+      final grammar = toneOfVoicePrompt('x', 'fix grammar', 'same');
+      expect(grammar, startsWith('Correct only the grammar'));
+    });
+
+    test('formal, friendly and custom tones use the tone instruction', () {
+      for (final tone in ['formal', 'friendly', 'pirate-ish']) {
+        expect(
+          toneOfVoicePrompt('hi', tone, 'same'),
+          'Rewrite the following text in a $tone tone. Keep the meaning. '
+          'Return only the rewritten text.\n\nText:\nhi',
+        );
+      }
+    });
+
+    test('length adds an instruction except for same and fix grammar', () {
+      expect(
+        toneOfVoicePrompt('x', 'formal', 'short'),
+        contains('Make it shorter than the original.'),
+      );
+      expect(
+        toneOfVoicePrompt('x', 'formal', 'longer'),
+        contains('Make it longer than the original'),
+      );
+      expect(
+        toneOfVoicePrompt('x', 'formal', 'same'),
+        isNot(contains('Make it')),
+      );
+      expect(
+        toneOfVoicePrompt('x', 'fix grammar', 'longer'),
+        isNot(contains('Make it')),
+      );
+    });
+
+    test('the tool threads length into its prompt', () async {
+      await _run(
+        _tool('write/tone-of-voice'),
+        const ToolInput(
+          files: [],
+          params: {'text': 'hi', 'tone': 'friendly', 'length': 'longer'},
+        ),
+      );
+      expect(llm.prompt, contains('friendly tone'));
+      expect(llm.prompt, contains('Make it longer'));
+    });
   });
+
+  test(
+    'write/word-counter counts on-device with no model and no output file',
+    () async {
+      final tool = _tool('write/word-counter');
+      expect(tool.engine, EngineKind.dartlib);
+      expect(tool.model, isNull);
+      final result = await _run(
+        tool,
+        const ToolInput(files: [], params: {'text': 'one two three.'}),
+      );
+      expect(result.files, isEmpty);
+      expect(result.text, contains('Words: 3'));
+      // Never touched the language model.
+      expect(llm.prompt, isNull);
+    },
+  );
 
   test('pdf/summarizer extracts the PDF text and prompts with it', () async {
     final result = await _run(
@@ -230,8 +307,13 @@ void main() {
     final tool = _tool('write/grammar-fixer');
     await expectLater(
       tool.run(const ToolInput(files: [], params: {})).toList(),
-      throwsA(isA<ToolException>().having((e) => e.message, 'message',
-          'Enter some text (or pick a text file).')),
+      throwsA(
+        isA<ToolException>().having(
+          (e) => e.message,
+          'message',
+          'Enter some text (or pick a text file).',
+        ),
+      ),
     );
     expect(llm.prompt, isNull);
   });

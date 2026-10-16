@@ -161,8 +161,13 @@ object ImageChannel {
         return encodeAs(call, Bitmap.createScaledBitmap(bmp, w, h, true))
     }
 
+    /**
+     * Optional `rotate` (degrees clockwise, multiples of 90) and `flip`
+     * (`none|horizontal|vertical`) are applied first; the crop rect is in the
+     * rotated/flipped image's coordinates — what the crop editor shows.
+     */
     private fun crop(call: MethodCall): ByteArray {
-        val bmp = decode(call.src())
+        val bmp = orient(decode(call.src()), call.int("rotate", 0), call.str("flip", "none"))
         val x = call.int("x")
         val y = call.int("y")
         val w = call.int("width")
@@ -172,6 +177,21 @@ object ImageChannel {
             fail("Crop rectangle is outside the image bounds (image is ${bmp.width}×${bmp.height}).")
         }
         return encodeAs(call, Bitmap.createBitmap(bmp, x, y, w, h))
+    }
+
+    private fun orient(bmp: Bitmap, rotate: Int, flip: String): Bitmap {
+        val deg = ((rotate % 360) + 360) % 360
+        if (deg % 90 != 0) fail("Rotation must be a multiple of 90 degrees.")
+        val m = Matrix()
+        if (deg != 0) m.postRotate(deg.toFloat())
+        when (flip.lowercase()) {
+            "none", "" -> {}
+            "horizontal" -> m.postScale(-1f, 1f)
+            "vertical" -> m.postScale(1f, -1f)
+            else -> fail("Flip must be none, horizontal, or vertical.")
+        }
+        if (m.isIdentity) return bmp
+        return Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, m, true)
     }
 
     /** Center-crops to the largest circle; always returns a transparent PNG. */
@@ -203,23 +223,36 @@ object ImageChannel {
         return out
     }
 
+    /**
+     * `style`: `even` (same width all round), `polaroid` (bottom 4× the
+     * sides), `square` (pads to a square canvas, image centred, at least
+     * `sizePx` on every side).
+     */
     private fun border(call: MethodCall): ByteArray {
         val bmp = decode(call.src())
         val size = call.int("sizePx")
         if (size <= 0) fail("Border size must be at least 1 pixel.")
-        val colorStr = call.str("color", "#FF000000")
-        val color = try {
-            Color.parseColor(if (colorStr.startsWith("#")) colorStr else "#$colorStr")
-        } catch (_: IllegalArgumentException) {
-            fail("Invalid color '$colorStr' — use hex like #FF0000 or #80FF0000.")
+        val color = parseColor(call.str("color", "#FF000000"))
+        val (outW, outH, left, top) = when (call.str("style", "even").lowercase()) {
+            "even" -> listOf(bmp.width + 2 * size, bmp.height + 2 * size, size, size)
+            "polaroid" -> listOf(bmp.width + 2 * size, bmp.height + 5 * size, size, size)
+            "square" -> {
+                val side = max(bmp.width, bmp.height) + 2 * size
+                listOf(side, side, (side - bmp.width) / 2, (side - bmp.height) / 2)
+            }
+            else -> fail("Border style must be even, polaroid, or square.")
         }
-        val out = Bitmap.createBitmap(
-            bmp.width + 2 * size, bmp.height + 2 * size, Bitmap.Config.ARGB_8888,
-        )
+        val out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(out)
         canvas.drawColor(color)
-        canvas.drawBitmap(bmp, size.toFloat(), size.toFloat(), null)
+        canvas.drawBitmap(bmp, left.toFloat(), top.toFloat(), null)
         return encodeAs(call, out)
+    }
+
+    private fun parseColor(s: String): Int = try {
+        Color.parseColor(if (s.startsWith("#")) s else "#$s")
+    } catch (_: IllegalArgumentException) {
+        fail("Invalid color '$s' — use hex like #FF0000 or #80FF0000.")
     }
 
     private fun pixelate(call: MethodCall): ByteArray {
@@ -259,27 +292,37 @@ object ImageChannel {
         return encodeAs(call, out)
     }
 
-    /** Lays every input image out on a fit-center grid; transparent PNG output. */
+    /**
+     * Lays every input image out on a fit-center grid. `gap` px separates the
+     * cells and frames the outside; `background` fills behind them
+     * (transparent by default). PNG output.
+     */
     private fun grid(call: MethodCall): ByteArray {
         val images = call.argument<List<ByteArray>>("images")
         if (images.isNullOrEmpty()) fail("No images were provided.")
         val bmps = images.map { decode(it) }
         val cols = call.int("columns", 0).let { if (it <= 0) bmps.size else min(it, bmps.size) }
         val rows = (bmps.size + cols - 1) / cols
+        val gap = call.int("gap", 0)
+        if (gap < 0) fail("Gap cannot be negative.")
+        val background = parseColor(call.str("background", "#00000000"))
         val cellW = bmps.maxOf { it.width }
         val cellH = bmps.maxOf { it.height }
-        if (cellW.toLong() * cols * cellH * rows > 100_000_000L) {
+        val outW = cellW.toLong() * cols + gap.toLong() * (cols + 1)
+        val outH = cellH.toLong() * rows + gap.toLong() * (rows + 1)
+        if (outW * outH > 100_000_000L) {
             fail("The combined image would be too large — use smaller images or fewer of them.")
         }
-        val out = Bitmap.createBitmap(cellW * cols, cellH * rows, Bitmap.Config.ARGB_8888)
+        val out = Bitmap.createBitmap(outW.toInt(), outH.toInt(), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(out)
+        if (Color.alpha(background) != 0) canvas.drawColor(background)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         bmps.forEachIndexed { i, bmp ->
             val scale = min(cellW.toFloat() / bmp.width, cellH.toFloat() / bmp.height)
             val w = bmp.width * scale
             val h = bmp.height * scale
-            val left = (i % cols) * cellW + (cellW - w) / 2f
-            val top = (i / cols) * cellH + (cellH - h) / 2f
+            val left = gap + (i % cols) * (cellW + gap) + (cellW - w) / 2f
+            val top = gap + (i / cols) * (cellH + gap) + (cellH - h) / 2f
             canvas.drawBitmap(bmp, null, RectF(left, top, left + w, top + h), paint)
         }
         return encode(out, "png", 100)

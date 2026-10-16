@@ -43,9 +43,9 @@ Key invariants:
 | `lib/models/` | Phase-2 delivery: `manifest*.dart`, `downloader.dart`, `model_cache.dart`, `device_caps.dart`, `model_manager.dart` |
 | `lib/tools/<category>/` | `ToolModule` implementations + a `build*Tools()` list per file |
 | `lib/agent/` | `agent_session.dart` (tool-call loop), `arg_validator.dart`, `tool_shortlist.dart`, `chain_prompt.dart`, `attachment_ingest.dart` |
-| `lib/ui/` | `providers.dart` (riverpod), `agent/` (chat), `tool/` (+ `editors/` WYSIWYG screens), `home/`, `settings/`, `widgets/` (`slab.dart`, `model_gate.dart`, `llm_memory_panel.dart`), `tokens.dart` |
-| `android/app/src/main/kotlin/com/arunesh/anvil/` | Platform channels: `ImageChannel` (`anvil/image`), `PdfChannel` (`anvil/pdf`), `ForegroundChannel` (`anvil/foreground`), `KeepAliveService` |
-| `test/`, `integration_test/` | 30 host tests mirroring `lib/`, 1 on-device smoke test |
+| `lib/ui/` | `providers.dart` (riverpod), `agent/` (chat), `tool/` (`input/` first-open picker + `MediaSources`; `editors/` dedicated tool screens on `ToolFrame`; `workspace/` PDF workspace), `home/`, `settings/`, `widgets/` (`slab.dart`, `model_gate.dart`, `llm_memory_panel.dart`), `tokens.dart` |
+| `android/app/src/main/kotlin/com/arunesh/anvil/` | Platform channels: `ImageChannel` (`anvil/image`), `PdfChannel` (`anvil/pdf`), `ForegroundChannel` (`anvil/foreground`), `ClipboardChannel` (`anvil/clipboard`, copied image/video for the picker's Paste), `KeepAliveService` |
+| `test/`, `integration_test/` | 50 host test files mirroring `lib/`, on-device smoke tests |
 | `data/`, `assets/manifest.json` | TinyWow catalog + classification JSON; curated model manifest (bundled, v4) |
 
 ## Development Commands
@@ -54,7 +54,7 @@ Key invariants:
 flutter pub get
 flutter analyze                       # must be clean; flutter_lints, android/ excluded
 dart format .
-flutter test                          # full host suite (~264 tests, ~35 s)
+flutter test                          # full host suite (~440 tests, ~40 s)
 flutter test test/chat_chain_test.dart --plain-name "a cold model"   # one test
 flutter run -d <device>
 flutter build apk --release           # signs with android/key.properties, else debug keys
@@ -76,6 +76,7 @@ There is no CI, no Makefile, and no scripts directory — these commands are the
 4. Append it to the file's `build*Tools()` list — `buildTools()` in `lib/core/registry.dart` is the one canonical list; never hand-maintain a second one.
 5. Tools whose real input comes from a WYSIWYG editor get `editorHandoff: EditorHandoff(message, always: true)` — the agent routes to them and the chat opens the editor (`ChatController._beginHandoff` → `chat_screen` → `EditorScaffold` completes `agentHandoffProvider` → `finishHandoff`). Override `handoffReason` when only some calls need the editor (`_PdfPlusImage`: no picture attached). Reserve `agentCallable: false` for tools the agent must never see. Name file roles with `inputSlots` (e.g. `document` + `signature`); use `ToolParamType.choice` for enumerated params. Implement `fileSetError` for combinations extensions cannot express; extension checks belong in `acceptedExtensions`.
 6. Add a `ToolGuide` (hint + keywords) in `lib/core/guides/<category>_guides.dart`, following the rules in `lib/core/tool_guide.dart`; `test/tool_guide_test.dart` fails for any agent-callable tool without one.
+7. Tool screens: `toolScreenFor` (`lib/ui/tool/tool_screen.dart`) is the one router. Without an entry a tool gets `GenericToolScreen` (shared first-open picker, then its params). A dedicated screen builds on `ToolFrame` (`lib/ui/tool/editors/tool_frame.dart`: header, first-open `ToolInputPicker` until a file is chosen, body, Run that says what it will do) with the stage controls in `tool_stage.dart`, calls `takeSharedInput` in `initState` (share intents and agent hand-offs preload through it), and runs through `jobProvider`. Every new declared param needs a default that keeps the output of an agent call that omits it; editor-only data goes in undeclared `input.params` keys and must be short (paths, not pixels — `JobNotifier` logs every value).
 
 **DI split.** `getIt` (`lib/core/di.dart`) holds lifecycle-free singletons: DB, repositories, services, engines, `ModelManager`, `ToolRegistry`, `ForegroundKeepAlive`. Riverpod holds ephemeral UI state (`lib/ui/providers.dart`). Tool bodies resolve engines via `getIt<XEngine>()`; widgets read providers.
 
@@ -108,13 +109,14 @@ There is no CI, no Makefile, and no scripts directory — these commands are the
 - `minSdk 26`, `compileSdk = maxOf(flutter.compileSdkVersion, 37)` (forced by `receive_sharing_intent` 1.9.0), JVM 17, AGP 9.0.1, Kotlin 2.3.20, Gradle 9.1.0.
 - **Do not flip `android.r8.strictFullModeForKeepRules` back to true** (`android/gradle.properties`): AGP 9's strict mode breaks ML Kit's AGP-8-era consumer keep rules and crashes OCR/segmentation in minified release builds.
 - `packaging.jniLibs.pickFirsts = **/libonnxruntime.so` resolves the `onnxruntime` vs `sherpa_onnx` duplicate; `third_party/flutter_avif_android` is a vendored override dropping a duplicate plugin class. Both are load-bearing.
-- Dependencies carry inline rationale in `pubspec.yaml` — honour it: `excel_community` (not `excel`), `ffmpeg_kit_flutter_new_full` LGPL fork pinned (R1), royalty-free codecs only (mpeg4/aac, vp9/opus — no x264/AV1 via ffmpeg; AVIF via `flutter_avif`), `flutter_gemma` 1.8.2 + `flutter_gemma_litertlm` 1.6.3.
+- Dependencies carry inline rationale in `pubspec.yaml` — honour it: `excel_community` (not `excel`), `ffmpeg_kit_flutter_new_full` LGPL fork pinned (R1), royalty-free codecs only (mpeg4/aac, vp9/opus — no x264/AV1 via ffmpeg; AVIF via `flutter_avif`), `flutter_gemma` 1.8.2 + `flutter_gemma_litertlm` 1.6.3. `photo_manager` (recent-media grid; `READ_MEDIA_IMAGES`/`READ_MEDIA_VIDEO`/`READ_MEDIA_VISUAL_USER_SELECTED` in the manifest), `video_player` (trim/GIF preview) and `google_mlkit_language_id` (translate auto-detect, must match the other `google_mlkit_*` versions) serve the tool screens only.
 - Adding a platform channel means touching three places: the Kotlin object, `MainActivity.configureFlutterEngine`, and (for services/permissions) `AndroidManifest.xml`. `android/**` is excluded from the Dart analyzer.
 
 ## Testing & QA
 
 - `flutter_test` + `sqflite_common_ffi`; `test/` mirrors `lib/`. Run the tests you touch; run the full suite before declaring done (it takes ~35 s).
 - **Host-test harness:** `sqfliteFfiInit()`, `databaseFactory = databaseFactoryFfi`, `inMemoryDatabasePath` with a hand-written `CREATE TABLE` in `setUp`, `getIt.registerSingleton<…>` per dependency, `await getIt.reset()` in `tearDown`. Logic tests use a bare `ProviderContainer()` + `addTearDown(container.dispose)`; widget tests use `ProviderScope(overrides: […])`.
+- **Picker seam:** widget tests that reach a first-open picker override `mediaSourcesProvider` with a fake `MediaSources` (see `test/generic_tool_screen_test.dart`); real sources hit photo_manager / image_picker / the clipboard channel.
 - **Fakes:** engines that reach native code are faked with `implements X` + `noSuchMethod` forwarding (`_FakeLlmEngine`, `_FakePdfEngine`, `_FakeMlKit`, `_FakeOnnx`, `_FakeAsr`, `_FakeFfmpeg`) — see the comment at `test/write_tools_test.dart:19`. `extends` is only for controllers with a safe base (`_FakeChatNotifier`). The agent loop is driven by scripted `LlmEvent` lists through `_ScriptedChat`.
 - **Widget tests** must override `modelStatusProvider(ChatSession.defaultModelTaskId)`, `availableModelsProvider`, and (when the LLM status is read) `llmStatusProvider`; screens with spinners need `pump()` + a fixed duration, never `pumpAndSettle()`. Async controller state is awaited with the `settle(container, cond)` polling helper in `test/chat_chain_test.dart`.
 - **Test bar:** assert observable behaviour (page counts, PNG magic bytes, ffmpeg arg lists, state transitions, validation rejections, device-gating disable paths), not plumbing. A regression test must fail before the fix — e.g. the cold-model test in `chat_chain_test.dart` fails if the model load is moved back ahead of persisting the user turn. Avoid pinning UI wording beyond what a user actually depends on.

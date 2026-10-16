@@ -23,7 +23,8 @@ class ImageEngine {
       throw ToolException(e.message ?? 'Image processing failed.');
     } on MissingPluginException {
       throw const ToolException(
-          'Image processing is not available on this platform.');
+        'Image processing is not available on this platform.',
+      );
     }
   }
 
@@ -35,15 +36,15 @@ class ImageEngine {
     Uint8List src,
     Map<String, Object?> args,
   ) => _guard(() async {
-        final out = await _channel.invokeMethod<Uint8List>(op, {
-          'src': src,
-          ...args,
-        });
-        if (out == null || out.isEmpty) {
-          throw const ToolException('Image processing produced no output.');
-        }
-        return out;
-      });
+    final out = await _channel.invokeMethod<Uint8List>(op, {
+      'src': src,
+      ...args,
+    });
+    if (out == null || out.isEmpty) {
+      throw const ToolException('Image processing produced no output.');
+    }
+    return out;
+  });
 
   /// Runs one named bitmap op that produces several images (e.g. split).
   Future<List<Uint8List>> transformToMany(
@@ -51,15 +52,15 @@ class ImageEngine {
     Uint8List src,
     Map<String, Object?> args,
   ) => _guard(() async {
-        final out = await _channel.invokeListMethod<Uint8List>(op, {
-          'src': src,
-          ...args,
-        });
-        if (out == null || out.isEmpty) {
-          throw const ToolException('Image processing produced no output.');
-        }
-        return out;
-      });
+    final out = await _channel.invokeListMethod<Uint8List>(op, {
+      'src': src,
+      ...args,
+    });
+    if (out == null || out.isEmpty) {
+      throw const ToolException('Image processing produced no output.');
+    }
+    return out;
+  });
 
   /// Runs one named bitmap op over several input images producing one image
   /// (e.g. grid collage).
@@ -68,15 +69,15 @@ class ImageEngine {
     List<Uint8List> images,
     Map<String, Object?> args,
   ) => _guard(() async {
-        final out = await _channel.invokeMethod<Uint8List>(op, {
-          'images': images,
-          ...args,
-        });
-        if (out == null || out.isEmpty) {
-          throw const ToolException('Image processing produced no output.');
-        }
-        return out;
-      });
+    final out = await _channel.invokeMethod<Uint8List>(op, {
+      'images': images,
+      ...args,
+    });
+    if (out == null || out.isEmpty) {
+      throw const ToolException('Image processing produced no output.');
+    }
+    return out;
+  });
 
   /// Runs one named query op (e.g. EXIF metadata read) returning a map.
   Future<Map<String, Object?>> query(
@@ -84,12 +85,12 @@ class ImageEngine {
     Uint8List src,
     Map<String, Object?> args,
   ) => _guard(() async {
-        final out = await _channel.invokeMapMethod<String, Object?>(op, {
-          'src': src,
-          ...args,
-        });
-        return out ?? const {};
-      });
+    final out = await _channel.invokeMapMethod<String, Object?>(op, {
+      'src': src,
+      ...args,
+    });
+    return out ?? const {};
+  });
 
   // ── Typed wrappers ─────────────────────────────────────────────────────────
 
@@ -109,28 +110,35 @@ class ImageEngine {
     String format = 'png',
     int quality = 90,
   }) => transform('resize', src, {
-        'width': width,
-        'height': height,
-        'format': format,
-        'quality': quality,
-      });
+    'width': width,
+    'height': height,
+    'format': format,
+    'quality': quality,
+  });
 
+  /// [rotate] (degrees clockwise, multiple of 90) and [flip]
+  /// ('none' | 'horizontal' | 'vertical') apply first; the rect is in the
+  /// rotated/flipped image's pixels.
   Future<Uint8List> crop(
     Uint8List src, {
     required int x,
     required int y,
     required int width,
     required int height,
+    int rotate = 0,
+    String flip = 'none',
     String format = 'png',
     int quality = 90,
   }) => transform('crop', src, {
-        'x': x,
-        'y': y,
-        'width': width,
-        'height': height,
-        'format': format,
-        'quality': quality,
-      });
+    'x': x,
+    'y': y,
+    'width': width,
+    'height': height,
+    'rotate': rotate,
+    'flip': flip,
+    'format': format,
+    'quality': quality,
+  });
 
   /// Center-crops to the largest circle; always a transparent PNG.
   Future<Uint8List> cropCircle(Uint8List src) =>
@@ -142,10 +150,10 @@ class ImageEngine {
     String format = 'png',
     int quality = 90,
   }) => transform('flip', src, {
-        'horizontal': horizontal ? 1 : 0,
-        'format': format,
-        'quality': quality,
-      });
+    'horizontal': horizontal ? 1 : 0,
+    'format': format,
+    'quality': quality,
+  });
 
   Future<Uint8List> grayscale(
     Uint8List src, {
@@ -153,19 +161,23 @@ class ImageEngine {
     int quality = 90,
   }) => transform('grayscale', src, {'format': format, 'quality': quality});
 
-  /// [color] is hex like `#FF0000` or `#80FF0000` (AARRGGBB).
+  /// [color] is hex like `#FF0000` or `#80FF0000` (AARRGGBB). [style]:
+  /// 'even' | 'polaroid' (bottom 4× the sides) | 'square' (padded to a
+  /// square canvas).
   Future<Uint8List> border(
     Uint8List src, {
     required int sizePx,
     required String color,
+    String style = 'even',
     String format = 'png',
     int quality = 90,
   }) => transform('border', src, {
-        'sizePx': sizePx,
-        'color': color,
-        'format': format,
-        'quality': quality,
-      });
+    'sizePx': sizePx,
+    'color': color,
+    'style': style,
+    'format': format,
+    'quality': quality,
+  });
 
   Future<Uint8List> pixelate(
     Uint8List src, {
@@ -173,10 +185,10 @@ class ImageEngine {
     String format = 'png',
     int quality = 90,
   }) => transform('pixelate', src, {
-        'blockSize': blockSize,
-        'format': format,
-        'quality': quality,
-      });
+    'blockSize': blockSize,
+    'format': format,
+    'quality': quality,
+  });
 
   /// Lossy re-encode; [format] must be 'jpg' or 'webp'.
   Future<Uint8List> compress(
@@ -196,22 +208,31 @@ class ImageEngine {
     String format = 'png',
     int quality = 100,
   }) => _guard(() async {
-        final out = await _channel.invokeMethod<Uint8List>('composite', {
-          'src': base,
-          'layers': layers,
-          'format': format,
-          'quality': quality,
-        });
-        if (out == null || out.isEmpty) {
-          throw const ToolException('Image processing produced no output.');
-        }
-        return out;
-      });
+    final out = await _channel.invokeMethod<Uint8List>('composite', {
+      'src': base,
+      'layers': layers,
+      'format': format,
+      'quality': quality,
+    });
+    if (out == null || out.isEmpty) {
+      throw const ToolException('Image processing produced no output.');
+    }
+    return out;
+  });
 
-  /// Lays [images] out on a grid with [columns] columns (<= 0 means one row);
-  /// transparent PNG output.
-  Future<Uint8List> grid(List<Uint8List> images, {required int columns}) =>
-      transformMany('grid', images, {'columns': columns});
+  /// Lays [images] out on a grid with [columns] columns (<= 0 means one row).
+  /// [gap] px separates the cells and frames the outside; [background] (hex
+  /// AARRGGBB) fills behind them. PNG output.
+  Future<Uint8List> grid(
+    List<Uint8List> images, {
+    required int columns,
+    int gap = 0,
+    String background = '#00000000',
+  }) => transformMany('grid', images, {
+    'columns': columns,
+    'gap': gap,
+    'background': background,
+  });
 
   /// Cuts [src] into a rows×cols grid of PNG tiles, row-major.
   Future<List<Uint8List>> split(
@@ -229,6 +250,5 @@ class ImageEngine {
     Uint8List src, {
     String format = 'png',
     int quality = 90,
-  }) =>
-      transform('metadataStrip', src, {'format': format, 'quality': quality});
+  }) => transform('metadataStrip', src, {'format': format, 'quality': quality});
 }

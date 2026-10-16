@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,30 +10,22 @@ import 'package:anvil/core/tool_module.dart';
 import 'package:anvil/ui/tokens.dart';
 import 'package:anvil/ui/widgets/slab.dart';
 import 'package:anvil/ui/widgets/model_gate.dart';
-import 'package:anvil/ui/providers.dart';
+import 'package:anvil/ui/tool/input/input_picker.dart';
 import 'package:anvil/ui/result/result_screen.dart';
 import 'package:anvil/ui/tool/job_controller.dart';
 import 'package:anvil/ui/tool/progress_view.dart';
 
 /// Image filter tools that show a live output preview in [GenericToolScreen].
 /// Their result depends only on filter params, so running the real tool on the
-/// selected file is the preview — no per-tool preview code.
-const _previewImageTools = {
-  'image/border',
-  'image/resize',
-  'image/pixelate',
-  'image/compress',
-  'image/grayscale',
-  'image/flip',
-};
+/// selected file is the preview — no per-tool preview code. (Border, resize
+/// and compress have their own screens.)
+const _previewImageTools = {'image/pixelate', 'image/grayscale', 'image/flip'};
 
 bool _hasPreview(ToolModule t) =>
     _previewImageTools.contains(t.meta.qualifiedId);
 
-/// Default screen for any tool: pick a file, run, watch progress, see result.
-///
-/// Param-input rendering is intentionally absent — csv→json has no params. The
-/// first parameterized tool (Phase 1) adds a params section here.
+/// Default screen for any tool without a dedicated one: the shared first-open
+/// picker, then the file, its params, and Run → progress → result.
 class GenericToolScreen extends ConsumerStatefulWidget {
   const GenericToolScreen({super.key, required this.tool});
 
@@ -75,14 +66,13 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
         c.addListener(_schedulePreview);
       }
     }
-    // Pre-select a shared file if its extension matches this tool.
-    final shared = ref.read(pendingSharedInputProvider);
-    if (shared != null && _matches(shared)) {
+    // Pre-select a shared (or agent hand-off) file if it fits this tool.
+    final shared = takeSharedInput(ref, widget.tool.meta);
+    if (shared != null) {
       _selected.add(shared);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(pendingSharedInputProvider.notifier).state = null;
-        if (_hasPreview(widget.tool)) _runPreview();
-      });
+      if (_hasPreview(widget.tool)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _runPreview());
+      }
     }
   }
 
@@ -147,32 +137,7 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
     };
   }
 
-  bool _matches(InputFile f) {
-    final dot = f.name.lastIndexOf('.');
-    if (dot < 0) return false;
-    final ext = f.name.substring(dot + 1).toLowerCase();
-    return widget.tool.meta.acceptedExtensions.contains(ext);
-  }
-
-  Future<void> _pickFile() async {
-    final List<PlatformFile> files;
-    if (widget.tool.meta.acceptsMultiple) {
-      files = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: widget.tool.meta.acceptedExtensions,
-      );
-    } else {
-      final one = await FilePicker.pickFile(
-        type: FileType.custom,
-        allowedExtensions: widget.tool.meta.acceptedExtensions,
-      );
-      files = one == null ? const [] : [one];
-    }
-    final picked = [
-      for (final f in files)
-        if (f.path != null) InputFile(path: f.path!, name: f.name),
-    ];
-    if (picked.isEmpty) return;
+  void _picked(List<InputFile> picked) {
     setState(() {
       _selected
         ..clear()
@@ -180,6 +145,13 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
     });
     if (_hasPreview(widget.tool)) _runPreview();
   }
+
+  /// Back to the first-open picker to choose another file.
+  void _swap() => setState(() {
+    _selected.clear();
+    _previewBytes = null;
+    _previewFailed = false;
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +207,34 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
         ? null
         : buildModelGate(context, ref, spec.taskId);
     final ready = modelReady(ref, spec?.taskId);
+    if (_selected.isEmpty && tool.meta.requiresInput) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(AnvilRadii.control),
+                onTap: () => Navigator.pop(context),
+                child: IconChip(
+                  icon: Icons.arrow_back,
+                  bg: c.container,
+                  fg: c.iconStrong,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(tool.meta.label, style: theme.textTheme.titleLarge),
+              ),
+            ],
+          ),
+          Expanded(
+            child: ToolInputPicker(tool: tool, onPicked: _picked, footer: gate),
+          ),
+        ],
+      );
+    }
     return ListView(
       children: [
         const SizedBox(height: 8),
@@ -278,25 +278,7 @@ class _GenericToolScreenState extends ConsumerState<GenericToolScreen> {
           SecondaryButton(
             label: 'Swap',
             icon: Icons.swap_horiz,
-            onPressed: _pickFile,
-          ),
-        ] else if (tool.meta.requiresInput) ...[
-          const SizedBox(height: 22),
-          InkWell(
-            borderRadius: BorderRadius.circular(AnvilRadii.panel),
-            onTap: _pickFile,
-            child: SlabPanel(
-              child: Row(
-                children: [
-                  IconChip(icon: Icons.attach_file),
-                  const SizedBox(width: 14),
-                  Text(
-                    tool.meta.acceptsMultiple ? 'Pick files' : 'Pick file',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ],
-              ),
-            ),
+            onPressed: _swap,
           ),
         ],
         if (_hasPreview(tool) && _selected.isNotEmpty) ...[

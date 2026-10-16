@@ -34,16 +34,22 @@ class TableData {
     if (raw.isEmpty) {
       throw const ToolException('The CSV file is empty.');
     }
-    return _fromRaw([for (final row in raw) [for (final c in row) c?.toString()]]);
+    return _fromRaw([
+      for (final row in raw) [for (final c in row) c?.toString()],
+    ]);
   }
 
-  String toCsv() {
+  /// [header] false drops the header line (a continuation chunk of a split).
+  String toCsv({bool header = true}) {
     final out = <List<String>>[
-      headers,
+      if (header) headers,
       for (var r = 0; r < rows.length; r++)
         [for (var c = 0; c < headers.length; c++) cell(r, c)],
     ];
-    return const CsvEncoder(fieldDelimiter: ',', lineDelimiter: '\n').convert(out);
+    return const CsvEncoder(
+      fieldDelimiter: ',',
+      lineDelimiter: '\n',
+    ).convert(out);
   }
 
   // ── Excel (.xlsx) ──────────────────────────────────────────────────────────
@@ -51,7 +57,9 @@ class TableData {
   /// Parses the FIRST worksheet only; formulas/styles are not preserved.
   static TableData parseExcel(List<int> bytes) {
     final excel = Excel.decodeBytes(bytes);
-    final sheet = excel.tables.values.where((s) => s.rows.isNotEmpty).firstOrNull;
+    final sheet = excel.tables.values
+        .where((s) => s.rows.isNotEmpty)
+        .firstOrNull;
     if (sheet == null) {
       throw const ToolException('The spreadsheet has no data.');
     }
@@ -62,11 +70,12 @@ class TableData {
     return _fromRaw(raw);
   }
 
-  List<int> toExcelBytes() {
+  /// [header] false writes data rows only (a continuation chunk of a split).
+  List<int> toExcelBytes({bool header = true}) {
     final excel = Excel.createExcel();
     final sheetName = excel.getDefaultSheet() ?? excel.sheets.keys.first;
     final sheet = excel[sheetName];
-    sheet.appendRow([for (final h in headers) TextCellValue(h)]);
+    if (header) sheet.appendRow([for (final h in headers) TextCellValue(h)]);
     for (var r = 0; r < rows.length; r++) {
       sheet.appendRow([
         for (var c = 0; c < headers.length; c++) TextCellValue(cell(r, c)),
@@ -127,18 +136,27 @@ class TableData {
   String toXmlTable() {
     final builder = XmlBuilder();
     builder.processing('xml', 'version="1.0" encoding="UTF-8"');
-    builder.element('table', nest: () {
-      for (var r = 0; r < rows.length; r++) {
-        builder.element('row', nest: () {
-          for (var c = 0; c < headers.length; c++) {
-            builder.element('field', nest: () {
-              builder.attribute('name', headers[c]);
-              builder.text(cell(r, c));
-            });
-          }
-        });
-      }
-    });
+    builder.element(
+      'table',
+      nest: () {
+        for (var r = 0; r < rows.length; r++) {
+          builder.element(
+            'row',
+            nest: () {
+              for (var c = 0; c < headers.length; c++) {
+                builder.element(
+                  'field',
+                  nest: () {
+                    builder.attribute('name', headers[c]);
+                    builder.text(cell(r, c));
+                  },
+                );
+              }
+            },
+          );
+        }
+      },
+    );
     return builder.buildDocument().toXmlString(pretty: true, indent: '  ');
   }
 

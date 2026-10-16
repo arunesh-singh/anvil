@@ -25,9 +25,9 @@ const imageToolGuides = <String, ToolGuide>{
     keywords: ['bokeh', 'portrait', 'backdrop'],
   ),
   'image/border': ToolGuide(
-    'Use for: frame a photo, add an outline or edge. sizePx is the border thickness; '
-    'color is a hex like #FF0000.',
-    keywords: ['frame', 'outline', 'edge'],
+    'Use for: frame a photo, add an outline or edge, polaroid frame. sizePx is the '
+    'thickness, color a hex like #FF0000, style polaroid or square from those words.',
+    keywords: ['frame', 'outline', 'edge', 'polaroid'],
   ),
   'image/change-bg-photo': ToolGuide(
     'Use for: replace the background with a solid colour, white backdrop for ID '
@@ -46,7 +46,8 @@ const imageToolGuides = <String, ToolGuide>{
   ),
   'image/collage-maker': ToolGuide(
     'Use for: arrange several photos in a grid, photo collage. columns sets the grid '
-    'width. Not for: one strip side by side - use image_combine_maker.',
+    'width; gap spaces them in pixels. Not for: one strip side by side - use '
+    'image_combine_maker.',
     keywords: ['grid', 'mosaic'],
   ),
   'image/colorize-photo': ToolGuide(
@@ -270,8 +271,8 @@ const imageToolGuides = <String, ToolGuide>{
     keywords: ['ocr', 'read', 'extract', 'screenshot', 'copy'],
   ),
   'image/translate': ToolGuide(
-    'Use for: translate the text in a photo or sign. from and to are language codes '
-    'like es, en; from is required.',
+    'Use for: translate the text in a photo or sign. Set to (and from, if the user '
+    'names it) as codes like es, en; leave from empty to auto-detect.',
     keywords: ['language', 'sign', 'menu', 'spanish', 'english'],
   ),
   'image/unblur': ToolGuide(

@@ -1,3 +1,9 @@
+/// Deterministic tabular/markup converters (csv, xlsx, xml, json) plus the
+/// two table splitters. Pure transforms are top-level so they run through
+/// [runOffThread] and stay host-tested; [buildConverters] is the single
+/// registration list for the category.
+library;
+
 import 'dart:math' show min;
 
 import 'package:flutter/material.dart' show IconData, Icons;
@@ -26,22 +32,81 @@ List<int> xmlToExcel(String s) => TableData.parseXmlTable(s).toExcelBytes();
 String excelToCsv(List<int> b) => TableData.parseExcel(b).toCsv();
 String excelToXml(List<int> b) => TableData.parseExcel(b).toXmlTable();
 
-List<TableData> _chunk(TableData t, int rowsPerFile) {
-  if (rowsPerFile < 1) {
+/// How a split cuts a table. [files] > 0 wins over [rowsPerFile] and cuts
+/// into that many near-equal files (earlier files take the remainder rows,
+/// clamped to one file per row). [repeatHeader] false keeps the header row
+/// in the FIRST file only; later files hold data rows only, so concatenating
+/// the files reproduces the source.
+class SplitSpec {
+  const SplitSpec({
+    this.rowsPerFile = 100,
+    this.files = 0,
+    this.repeatHeader = true,
+  });
+
+  final int rowsPerFile;
+  final int files;
+  final bool repeatHeader;
+
+  /// Reads the split tools' params; anything missing or out of range keeps
+  /// the default, so an agent call naming only `rowsPerFile` behaves as before.
+  factory SplitSpec.fromParams(Map<String, dynamic> p) => SplitSpec(
+    rowsPerFile: switch (p['rowsPerFile']) {
+      final int v when v > 0 => v,
+      _ => _splitRowsParam.defaultValue,
+    },
+    files: switch (p['files']) {
+      final int v when v > 0 => v,
+      _ => 0,
+    },
+    repeatHeader: p['header'] != 'no',
+  );
+}
+
+/// Data-row count of each output file for a table of [rowCount] rows. Always
+/// at least one file (an empty table still yields its header-only file).
+List<int> splitPlan(int rowCount, SplitSpec spec) {
+  if (spec.files > 0) {
+    final n = min(spec.files, rowCount < 1 ? 1 : rowCount);
+    final base = rowCount ~/ n;
+    final extra = rowCount % n;
+    return [for (var i = 0; i < n; i++) base + (i < extra ? 1 : 0)];
+  }
+  if (spec.rowsPerFile < 1) {
     throw const ToolException('Rows per file must be at least 1.');
   }
-  if (t.rows.isEmpty) return [TableData(t.headers, const [])];
+  if (rowCount == 0) return const [0];
   return [
-    for (var i = 0; i < t.rows.length; i += rowsPerFile)
-      TableData(t.headers, t.rows.sublist(i, min(i + rowsPerFile, t.rows.length))),
+    for (var i = 0; i < rowCount; i += spec.rowsPerFile)
+      min(spec.rowsPerFile, rowCount - i),
   ];
 }
 
-List<String> splitCsv(String s, int rowsPerFile) =>
-    [for (final c in _chunk(TableData.parseCsv(s), rowsPerFile)) c.toCsv()];
+List<TableData> _chunk(TableData t, SplitSpec spec) {
+  final chunks = <TableData>[];
+  var start = 0;
+  for (final n in splitPlan(t.rows.length, spec)) {
+    chunks.add(TableData(t.headers, t.rows.sublist(start, start + n)));
+    start += n;
+  }
+  return chunks;
+}
 
-List<List<int>> splitExcel(List<int> b, int rowsPerFile) =>
-    [for (final c in _chunk(TableData.parseExcel(b), rowsPerFile)) c.toExcelBytes()];
+List<String> splitCsv(String s, [SplitSpec spec = const SplitSpec()]) {
+  final chunks = _chunk(TableData.parseCsv(s), spec);
+  return [
+    for (var i = 0; i < chunks.length; i++)
+      chunks[i].toCsv(header: spec.repeatHeader || i == 0),
+  ];
+}
+
+List<List<int>> splitExcel(List<int> b, [SplitSpec spec = const SplitSpec()]) {
+  final chunks = _chunk(TableData.parseExcel(b), spec);
+  return [
+    for (var i = 0; i < chunks.length; i++)
+      chunks[i].toExcelBytes(header: spec.repeatHeader || i == 0),
+  ];
+}
 
 // ── Generic tool shapes ──────────────────────────────────────────────────────
 
@@ -49,12 +114,6 @@ String _outName(String input, String ext, {int? index}) {
   final dot = input.lastIndexOf('.');
   final base = dot <= 0 ? input : input.substring(0, dot);
   return index == null ? '$base.$ext' : '${base}_${index + 1}.$ext';
-}
-
-int _rowsPerFile(ToolModule tool, ToolInput input) {
-  final v = input.params['rowsPerFile'];
-  if (v is int && v > 0) return v;
-  return tool.meta.params.isNotEmpty ? tool.meta.params.first.defaultValue : 100;
 }
 
 class _TextToText extends BaseToolModule {
@@ -80,7 +139,9 @@ class _TextToText extends BaseToolModule {
     final name = _outName(f.name, _ext);
     final file = await getIt<FileService>().writeString(name, out);
     yield ToolSucceeded(
-      ToolResult(files: [OutputFile(path: file.path, name: name, mimeType: _mime)]),
+      ToolResult(
+        files: [OutputFile(path: file.path, name: name, mimeType: _mime)],
+      ),
     );
   }
 }
@@ -108,7 +169,9 @@ class _TextToBytes extends BaseToolModule {
     final name = _outName(f.name, _ext);
     final file = await getIt<FileService>().writeBytes(name, out);
     yield ToolSucceeded(
-      ToolResult(files: [OutputFile(path: file.path, name: name, mimeType: _mime)]),
+      ToolResult(
+        files: [OutputFile(path: file.path, name: name, mimeType: _mime)],
+      ),
     );
   }
 }
@@ -136,7 +199,9 @@ class _BytesToText extends BaseToolModule {
     final name = _outName(f.name, _ext);
     final file = await getIt<FileService>().writeString(name, out);
     yield ToolSucceeded(
-      ToolResult(files: [OutputFile(path: file.path, name: name, mimeType: _mime)]),
+      ToolResult(
+        files: [OutputFile(path: file.path, name: name, mimeType: _mime)],
+      ),
     );
   }
 }
@@ -145,7 +210,7 @@ class _TextToManyText extends BaseToolModule {
   _TextToManyText(this.meta, this._fn, this._ext, this._mime);
   @override
   final ToolMeta meta;
-  final List<String> Function(String, int) _fn;
+  final List<String> Function(String, SplitSpec) _fn;
   final String _ext;
   final String _mime;
 
@@ -157,10 +222,10 @@ class _TextToManyText extends BaseToolModule {
     yield const ToolRunning(message: 'Reading file…');
     final f = input.files.single;
     final content = await getIt<FileService>().readString(f.path);
-    final n = _rowsPerFile(this, input);
+    final spec = SplitSpec.fromParams(input.params);
     yield const ToolRunning(fraction: 0.4, message: 'Splitting…');
     final fn = _fn;
-    final parts = await runOffThread(() => fn(content, n));
+    final parts = await runOffThread(() => fn(content, spec));
     yield const ToolRunning(fraction: 0.85, message: 'Saving…');
     final files = <OutputFile>[];
     for (var i = 0; i < parts.length; i++) {
@@ -176,7 +241,7 @@ class _BytesToManyBytes extends BaseToolModule {
   _BytesToManyBytes(this.meta, this._fn, this._ext, this._mime);
   @override
   final ToolMeta meta;
-  final List<List<int>> Function(List<int>, int) _fn;
+  final List<List<int>> Function(List<int>, SplitSpec) _fn;
   final String _ext;
   final String _mime;
 
@@ -188,10 +253,10 @@ class _BytesToManyBytes extends BaseToolModule {
     yield const ToolRunning(message: 'Reading file…');
     final f = input.files.single;
     final content = await getIt<FileService>().readBytes(f.path);
-    final n = _rowsPerFile(this, input);
+    final spec = SplitSpec.fromParams(input.params);
     yield const ToolRunning(fraction: 0.4, message: 'Splitting…');
     final fn = _fn;
-    final parts = await runOffThread(() => fn(content, n));
+    final parts = await runOffThread(() => fn(content, spec));
     yield const ToolRunning(fraction: 0.85, message: 'Saving…');
     final files = <OutputFile>[];
     for (var i = 0; i < parts.length; i++) {
@@ -223,69 +288,164 @@ ToolMeta _meta(
   params: params,
 );
 
-const _splitParam = ToolParam(
+const _splitRowsParam = ToolParam(
   key: 'rowsPerFile',
   label: 'Rows per file',
   defaultValue: 100,
+  min: 1,
 );
+
+const _splitFilesParam = ToolParam(
+  key: 'files',
+  label: 'Number of files',
+  helperText: '0 = cut by rows per file instead',
+);
+
+const _splitHeaderParam = ToolParam(
+  key: 'header',
+  label: 'Repeat header in every file',
+  type: ToolParamType.choice,
+  choices: ['yes', 'no'],
+  defaultText: 'yes',
+  helperText: 'no = only the first file keeps the header row',
+);
+
+const _splitParams = [_splitRowsParam, _splitFilesParam, _splitHeaderParam];
 
 /// Every converter tool. The single registration list for this category.
 List<ToolModule> buildConverters() => [
   _TextToText(
-    _meta('csv-to-json', 'CSV to JSON', Icons.data_object,
-        'Convert a CSV file into a JSON array of objects.', ['csv']),
-    csvToJson, 'json', _jsonMime,
+    _meta(
+      'csv-to-json',
+      'CSV to JSON',
+      Icons.data_object,
+      'Convert a CSV file into a JSON array of objects.',
+      ['csv'],
+    ),
+    csvToJson,
+    'json',
+    _jsonMime,
   ),
   _TextToText(
-    _meta('csv-to-xml', 'CSV to XML', Icons.code,
-        'Convert a CSV file into an XML table.', ['csv']),
-    csvToXml, 'xml', _xmlMime,
+    _meta(
+      'csv-to-xml',
+      'CSV to XML',
+      Icons.code,
+      'Convert a CSV file into an XML table.',
+      ['csv'],
+    ),
+    csvToXml,
+    'xml',
+    _xmlMime,
   ),
   _TextToBytes(
-    _meta('csv-to-excel', 'CSV to Excel', Icons.table_chart,
-        'Convert a CSV file into an Excel (.xlsx) spreadsheet.', ['csv']),
-    csvToExcel, 'xlsx', _xlsxMime,
+    _meta(
+      'csv-to-excel',
+      'CSV to Excel',
+      Icons.table_chart,
+      'Convert a CSV file into an Excel (.xlsx) spreadsheet.',
+      ['csv'],
+    ),
+    csvToExcel,
+    'xlsx',
+    _xlsxMime,
   ),
   _TextToText(
-    _meta('xml-to-csv', 'XML to CSV', Icons.grid_on,
-        'Convert an XML table into a CSV file.', ['xml']),
-    xmlToCsv, 'csv', _csvMime,
+    _meta(
+      'xml-to-csv',
+      'XML to CSV',
+      Icons.grid_on,
+      'Convert an XML table into a CSV file.',
+      ['xml'],
+    ),
+    xmlToCsv,
+    'csv',
+    _csvMime,
   ),
   _TextToBytes(
-    _meta('xml-to-excel', 'XML to Excel', Icons.table_chart,
-        'Convert an XML table into an Excel (.xlsx) spreadsheet.', ['xml']),
-    xmlToExcel, 'xlsx', _xlsxMime,
+    _meta(
+      'xml-to-excel',
+      'XML to Excel',
+      Icons.table_chart,
+      'Convert an XML table into an Excel (.xlsx) spreadsheet.',
+      ['xml'],
+    ),
+    xmlToExcel,
+    'xlsx',
+    _xlsxMime,
   ),
   _TextToText(
-    _meta('xml-to-json', 'XML to JSON', Icons.data_object,
-        'Convert an XML document into JSON.', ['xml']),
-    xmlToJson, 'json', _jsonMime,
+    _meta(
+      'xml-to-json',
+      'XML to JSON',
+      Icons.data_object,
+      'Convert an XML document into JSON.',
+      ['xml'],
+    ),
+    xmlToJson,
+    'json',
+    _jsonMime,
   ),
   _TextToText(
-    _meta('json-to-xml', 'JSON to XML', Icons.code,
-        'Convert a JSON document into XML.', ['json']),
-    jsonToXml, 'xml', _xmlMime,
+    _meta(
+      'json-to-xml',
+      'JSON to XML',
+      Icons.code,
+      'Convert a JSON document into XML.',
+      ['json'],
+    ),
+    jsonToXml,
+    'xml',
+    _xmlMime,
   ),
   _BytesToText(
-    _meta('excel-to-csv', 'Excel to CSV', Icons.grid_on,
-        'Convert the first sheet of an Excel file into CSV.', ['xlsx']),
-    excelToCsv, 'csv', _csvMime,
+    _meta(
+      'excel-to-csv',
+      'Excel to CSV',
+      Icons.grid_on,
+      'Convert the first sheet of an Excel file into CSV.',
+      ['xlsx'],
+    ),
+    excelToCsv,
+    'csv',
+    _csvMime,
   ),
   _BytesToText(
-    _meta('excel-to-xml', 'Excel to XML', Icons.code,
-        'Convert the first sheet of an Excel file into an XML table.', ['xlsx']),
-    excelToXml, 'xml', _xmlMime,
+    _meta(
+      'excel-to-xml',
+      'Excel to XML',
+      Icons.code,
+      'Convert the first sheet of an Excel file into an XML table.',
+      ['xlsx'],
+    ),
+    excelToXml,
+    'xml',
+    _xmlMime,
   ),
   _TextToManyText(
-    _meta('split-csv', 'Split CSV', Icons.call_split,
-        'Split a CSV file into smaller files by row count.', ['csv'],
-        params: [_splitParam]),
-    splitCsv, 'csv', _csvMime,
+    _meta(
+      'split-csv',
+      'Split CSV',
+      Icons.call_split,
+      'Split a CSV file into smaller files by row count or file count.',
+      ['csv'],
+      params: _splitParams,
+    ),
+    splitCsv,
+    'csv',
+    _csvMime,
   ),
   _BytesToManyBytes(
-    _meta('split-excel', 'Split Excel', Icons.call_split,
-        'Split an Excel file into smaller files by row count.', ['xlsx'],
-        params: [_splitParam]),
-    splitExcel, 'xlsx', _xlsxMime,
+    _meta(
+      'split-excel',
+      'Split Excel',
+      Icons.call_split,
+      'Split an Excel file into smaller files by row count or file count.',
+      ['xlsx'],
+      params: _splitParams,
+    ),
+    splitExcel,
+    'xlsx',
+    _xlsxMime,
   ),
 ];

@@ -1,8 +1,10 @@
-/// Pure helpers for the ML image tools: subject-mask compositing and
-/// float32 NCHW tensor packing for the ONNX engine contract.
+/// Pure helpers for the ML image tools: subject-mask compositing, editable
+/// 8-bit masks (brush strokes, PNG round-trip, preview scaling) and float32
+/// NCHW tensor packing for the ONNX engine contract.
 /// No Flutter/plugin imports — host-unit-testable (test/image_ml_test.dart).
 library;
 
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
@@ -60,8 +62,7 @@ img.Image profilePhoto(
   List<double> mask, {
   (int, int, int, int) background = (229, 231, 235, 255),
 }) {
-  final cutout =
-      applyMask(src, mask, background: MaskBackground.transparent);
+  final cutout = applyMask(src, mask, background: MaskBackground.transparent);
   final d = cutout.width < cutout.height ? cutout.width : cutout.height;
   final out = img.Image(width: d, height: d, numChannels: 4);
   final r = d / 2.0;
@@ -70,8 +71,14 @@ img.Image profilePhoto(
       final dx = x - r + 0.5;
       final dy = y - r + 0.5;
       if (dx * dx + dy * dy <= r * r) {
-        out.setPixelRgba(x, y, background.$1, background.$2, background.$3,
-            background.$4);
+        out.setPixelRgba(
+          x,
+          y,
+          background.$1,
+          background.$2,
+          background.$3,
+          background.$4,
+        );
       } else {
         out.setPixelRgba(x, y, 0, 0, 0, 0);
       }
@@ -85,8 +92,7 @@ img.Image profilePhoto(
 }
 
 /// Builds a 1-channel inpainting mask (1.0 = fill) from rectangles.
-ImageTensor rectMask(
-    int width, int height, List<(int, int, int, int)> rects) {
+ImageTensor rectMask(int width, int height, List<(int, int, int, int)> rects) {
   final data = Float32List(width * height);
   for (final (rx, ry, rw, rh) in rects) {
     final x0 = rx.clamp(0, width);
@@ -148,4 +154,166 @@ img.Image tensorToImage(ImageTensor t) {
     throw ArgumentError.value(hex, 'hex', 'expected #RRGGBB or #AARRGGBB');
   }
   return ((v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff, (v >> 24) & 0xff);
+}
+
+// ── Editable 8-bit subject masks ────────────────────────────────────────────
+
+/// Quantizes a 0..1 confidence mask to bytes (0..255). Rounding keeps the
+/// 0.5 subject threshold exact: c ≥ 0.5 ⇔ byte ≥ 128 ⇔ byte/255 ≥ 0.5.
+Uint8List maskToBytes(List<double> confidence) {
+  final out = Uint8List(confidence.length);
+  for (var i = 0; i < out.length; i++) {
+    out[i] = (confidence[i] * 255).round().clamp(0, 255);
+  }
+  return out;
+}
+
+/// Byte mask → 0..1 confidences for [applyMask].
+List<double> maskConfidence(Uint8List mask) {
+  final out = Float32List(mask.length);
+  for (var i = 0; i < out.length; i++) {
+    out[i] = mask[i] / 255;
+  }
+  return out;
+}
+
+/// One brush stroke on a subject mask, in mask pixel coordinates: [add]
+/// paints subject, otherwise it erases. Plain values so it crosses isolates.
+class MaskStroke {
+  const MaskStroke({
+    required this.add,
+    required this.radius,
+    required this.points,
+  });
+  final bool add;
+  final double radius;
+  final List<(double, double)> points;
+
+  /// The same stroke in a mask [factor]× the size (preview ↔ full image).
+  MaskStroke scaled(double factor) => MaskStroke(
+    add: add,
+    radius: radius * factor,
+    points: [for (final (x, y) in points) (x * factor, y * factor)],
+  );
+}
+
+/// Rasterises [strokes] in order onto [mask] ([width]×[height]) in place:
+/// round brush stamps every half radius along each segment.
+void paintStrokes(
+  Uint8List mask,
+  int width,
+  int height,
+  List<MaskStroke> strokes,
+) {
+  void stamp(double cx, double cy, double r, int value) {
+    final x0 = (cx - r).floor().clamp(0, width);
+    final x1 = (cx + r).ceil().clamp(0, width);
+    final y0 = (cy - r).floor().clamp(0, height);
+    final y1 = (cy + r).ceil().clamp(0, height);
+    final r2 = r * r;
+    for (var y = y0; y < y1; y++) {
+      final dy = y + 0.5 - cy;
+      for (var x = x0; x < x1; x++) {
+        final dx = x + 0.5 - cx;
+        if (dx * dx + dy * dy <= r2) mask[y * width + x] = value;
+      }
+    }
+  }
+
+  for (final s in strokes) {
+    if (s.points.isEmpty) continue;
+    final value = s.add ? 255 : 0;
+    final r = s.radius < 0.5 ? 0.5 : s.radius;
+    final step = r / 2;
+    var (px, py) = s.points.first;
+    stamp(px, py, r, value);
+    for (final (x, y) in s.points.skip(1)) {
+      final dx = x - px;
+      final dy = y - py;
+      final dist = math.sqrt(dx * dx + dy * dy);
+      final n = (dist / step).ceil();
+      for (var i = 1; i <= n; i++) {
+        stamp(px + dx * i / n, py + dy * i / n, r, value);
+      }
+      px = x;
+      py = y;
+    }
+  }
+}
+
+/// Nearest-neighbour resample of a byte mask (preview scaling).
+Uint8List resizeMask(
+  Uint8List mask,
+  int width,
+  int height,
+  int toWidth,
+  int toHeight,
+) {
+  final out = Uint8List(toWidth * toHeight);
+  for (var y = 0; y < toHeight; y++) {
+    final sy = (y * height ~/ toHeight).clamp(0, height - 1);
+    for (var x = 0; x < toWidth; x++) {
+      final sx = (x * width ~/ toWidth).clamp(0, width - 1);
+      out[y * toWidth + x] = mask[sy * width + sx];
+    }
+  }
+  return out;
+}
+
+/// Encodes a byte mask as an 8-bit grayscale PNG (the `maskPath` contract).
+Uint8List encodeMaskPng(Uint8List mask, int width, int height) {
+  final image = img.Image.fromBytes(
+    width: width,
+    height: height,
+    bytes: mask.buffer,
+    bytesOffset: mask.offsetInBytes,
+    numChannels: 1,
+  );
+  return img.encodePng(image);
+}
+
+/// Decodes a mask image (any format; luminance is the confidence) into
+/// `(width, height, confidences)`, or null when [bytes] is not an image.
+(int, int, List<double>)? decodeMask(Uint8List bytes) {
+  final img.Image? image;
+  try {
+    image = img.decodeImage(bytes);
+  } catch (_) {
+    return null; // Truncated or garbage bytes throw inside the decoders.
+  }
+  if (image == null) return null;
+  final out = Float32List(image.width * image.height);
+  // Pixel.luminance weights g/b too, which a 1-channel gray PNG lacks.
+  final gray = image.numChannels < 3;
+  var i = 0;
+  for (final p in image) {
+    out[i++] = (gray ? p.rNormalized : p.luminanceNormalized).toDouble();
+  }
+  return (image.width, image.height, out);
+}
+
+/// RGBA overlay that shows a byte mask on the stage: subject pixels tinted
+/// with [tint] at low alpha, the subject's edge drawn solid.
+Uint8List maskOverlayRgba(
+  Uint8List mask,
+  int width,
+  int height,
+  (int, int, int) tint,
+) {
+  final out = Uint8List(width * height * 4);
+  bool on(int x, int y) =>
+      x >= 0 && y >= 0 && x < width && y < height && mask[y * width + x] >= 128;
+  for (var y = 0; y < height; y++) {
+    for (var x = 0; x < width; x++) {
+      if (!on(x, y)) continue;
+      final edge =
+          !on(x - 1, y) || !on(x + 1, y) || !on(x, y - 1) || !on(x, y + 1);
+      final o = (y * width + x) * 4;
+      out[o] = tint.$1;
+      out[o + 1] = tint.$2;
+      out[o + 2] = tint.$3;
+      out[o + 3] = edge ? 255 : 70;
+    }
+  }
+  return out;
 }

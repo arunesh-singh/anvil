@@ -161,9 +161,12 @@ void main() {
     expect(registry.byId('pdf/from-url')!.meta.requiresInput, isFalse);
   });
 
-  test('split tools declare a rowsPerFile param; others have none', () {
+  test('split tools declare rowsPerFile/files/header; others have none', () {
     final registry = ToolRegistry(buildTools());
-    expect(registry.byId('split-csv')!.meta.params.single.key, 'rowsPerFile');
+    expect(
+      [for (final p in registry.byId('split-csv')!.meta.params) p.key],
+      ['rowsPerFile', 'files', 'header'],
+    );
     expect(registry.byId('csv-to-json')!.meta.params, isEmpty);
   });
 

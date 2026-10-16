@@ -230,7 +230,7 @@ const writeToolGuides = <String, ToolGuide>{
   'write/tone-of-voice': ToolGuide(
     "Use for: make this more formal, friendlier tone, sound professional. "
     "Put the user's text in `text`; set `tone` from words like formal, "
-    'casual, friendly.',
+    "casual, friendly and `length` to short or longer only if asked.",
     keywords: ['formal', 'casual', 'friendly', 'polite', 'professional'],
   ),
   'write/translate': ToolGuide(

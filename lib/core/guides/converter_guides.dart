@@ -46,14 +46,14 @@ const converterToolGuides = <String, ToolGuide>{
   ),
   'converter/split-csv': ToolGuide(
     'Use for: split csv into parts, break large csv into chunks, '
-    'csv by row count. Set `rowsPerFile` from the number of rows per part '
-    '(default 100).',
+    'csv by row count. Set `rowsPerFile` from rows per part, or `files` '
+    "from 'into N files'.",
     keywords: ['chunks', 'parts', 'divide', 'rows', 'batches'],
   ),
   'converter/split-excel': ToolGuide(
     'Use for: split excel into parts, break large spreadsheet into chunks, '
-    'xlsx by row count. Set `rowsPerFile` from the number of rows per part '
-    '(default 100).',
+    'xlsx by row count. Set `rowsPerFile` from rows per part, or `files` '
+    "from 'into N files'.",
     keywords: ['spreadsheet', 'chunks', 'parts', 'divide', 'rows', 'batches'],
   ),
 };

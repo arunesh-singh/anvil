@@ -4,6 +4,7 @@
 /// The single registration list for this block lives in [buildImageMlTools].
 library;
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart' show IconData, Icons;
@@ -12,6 +13,7 @@ import 'package:image/image.dart' as img;
 import 'package:anvil/core/di.dart';
 import 'package:anvil/core/file_service.dart';
 import 'package:anvil/core/isolate_runner.dart';
+import 'package:anvil/core/languages.dart';
 import 'package:anvil/core/tool_io.dart';
 import 'package:anvil/core/tool_module.dart';
 import 'package:anvil/engines/mlkit_engine.dart';
@@ -46,6 +48,34 @@ String _outName(String input, String ext, [String suffix = '']) {
   return '$base$suffix.$ext';
 }
 
+/// Text outputs are UTF-8: OCR and translations are often non-Latin.
+Uint8List _utf8(String text) => Uint8List.fromList(utf8.encode(text));
+
+/// The translation source for [from]: an explicit code as given, or — when
+/// [from] is empty/'auto' — the language ML Kit identifies in [text].
+/// Throws [ToolException] when detection fails or finds a language
+/// on-device translation cannot handle.
+Future<String> sourceLanguageFor(String from, String text) async {
+  final requested = from.trim();
+  if (requested.isNotEmpty && requested.toLowerCase() != 'auto') {
+    return canonicalLanguageCode(requested);
+  }
+  final detected = await getIt<MlKitEngine>().identifyLanguage(text);
+  if (detected == null) {
+    throw const ToolException(
+      "Couldn't tell which language the text is in. Choose the source "
+      'language.',
+    );
+  }
+  if (!isTranslatable(detected)) {
+    throw ToolException(
+      'The text looks like ${languageName(detected)}, which on-device '
+      "translation doesn't support.",
+    );
+  }
+  return canonicalLanguageCode(detected);
+}
+
 Future<Uint8List> _readBytes(InputFile f) async =>
     await getIt<FileService>().readBytes(f.path) as Uint8List;
 
@@ -70,6 +100,29 @@ Future<List<double>> _subjectMask(InputFile f, img.Image decoded) async {
     );
   }
   return mask.confidence;
+}
+
+/// Undeclared `input.params` key the Background editor sets when the user
+/// hand-fixed the subject edge: path of an 8-bit grayscale PNG mask (white =
+/// subject) at the image's size. Editor-only, so agents never see it; absent
+/// means the tool segments as usual.
+const maskPathParam = 'maskPath';
+
+/// Reads the editor-supplied mask at [path] instead of re-segmenting.
+Future<List<double>> _suppliedMask(String path, img.Image decoded) async {
+  final bytes = Uint8List.fromList(await getIt<FileService>().readBytes(path));
+  final mask = await runOffThread(() => ml.decodeMask(bytes));
+  if (mask == null) {
+    throw const ToolException('Could not read the edited subject mask.');
+  }
+  final (w, h, confidence) = mask;
+  if (w != decoded.width || h != decoded.height) {
+    throw ToolException(
+      'The edited subject mask is $w×$h but the photo is '
+      '${decoded.width}×${decoded.height}.',
+    );
+  }
+  return confidence;
 }
 
 /// Runs one curated enhance-contract model over the whole image.
@@ -199,7 +252,10 @@ _MlTool _segTool(
   null,
   (f, p) async {
     final decoded = await _decode(await _readBytes(f));
-    final mask = await _subjectMask(f, decoded);
+    final maskPath = p[maskPathParam];
+    final mask = maskPath is String && maskPath.isNotEmpty
+        ? await _suppliedMask(maskPath, decoded)
+        : await _subjectMask(f, decoded);
     final composed = await compose(decoded, mask, p);
     final png = await runOffThread(() => img.encodePng(composed));
     return (png, 'png', 'image/png', null);
@@ -310,7 +366,7 @@ List<ToolModule> buildImageMlTools() => [
         throw const ToolException("Couldn't recognize anything in this photo.");
       }
       final text = tags.map((t) => t.label).join(', ');
-      return (Uint8List.fromList(text.codeUnits), 'txt', 'text/plain', text);
+      return (_utf8(text), 'txt', 'text/plain', text);
     },
   ),
   _segTool(
@@ -454,12 +510,7 @@ List<ToolModule> buildImageMlTools() => [
       if (ocr.text.trim().isEmpty) {
         throw const ToolException('No text found in this image.');
       }
-      return (
-        Uint8List.fromList(ocr.text.codeUnits),
-        'txt',
-        'text/plain',
-        ocr.text,
-      );
+      return (_utf8(ocr.text), 'txt', 'text/plain', ocr.text);
     },
   ),
   _MlTool(
@@ -477,12 +528,7 @@ List<ToolModule> buildImageMlTools() => [
       if (ocr.text.trim().isEmpty) {
         throw const ToolException('No text found in this image.');
       }
-      return (
-        Uint8List.fromList(ocr.text.codeUnits),
-        'txt',
-        'text/plain',
-        ocr.text,
-      );
+      return (_utf8(ocr.text), 'txt', 'text/plain', ocr.text);
     },
   ),
   _MlTool(
@@ -495,7 +541,7 @@ List<ToolModule> buildImageMlTools() => [
       params: const [
         ToolParam(
           key: 'from',
-          label: 'From language (code, e.g. es)',
+          label: 'From language (code, or auto)',
           type: ToolParamType.text,
           defaultText: '',
         ),
@@ -510,28 +556,18 @@ List<ToolModule> buildImageMlTools() => [
     EngineKind.mlkit,
     null,
     (f, p) async {
-      final from = _textParam(p, 'from', '');
-      if (from.isEmpty) {
-        throw const ToolException(
-          "Enter the source language code (e.g. 'es' for Spanish).",
-        );
-      }
       final mlkit = getIt<MlKitEngine>();
       final ocr = await mlkit.recognizeText(f.path);
       if (ocr.text.trim().isEmpty) {
         throw const ToolException('No text found in this image.');
       }
-      final translated = await mlkit.translate(
-        ocr.text,
-        from: from,
-        to: _textParam(p, 'to', 'en'),
-      );
-      return (
-        Uint8List.fromList(translated.codeUnits),
-        'txt',
-        'text/plain',
-        translated,
-      );
+      final from = await sourceLanguageFor(_textParam(p, 'from', ''), ocr.text);
+      final to = canonicalLanguageCode(_textParam(p, 'to', 'en'));
+      // Already in the target language: the recognised text is the answer.
+      final translated = from == to
+          ? ocr.text
+          : await mlkit.translate(ocr.text, from: from, to: to);
+      return (_utf8(translated), 'txt', 'text/plain', translated);
     },
   ),
   _enhanceTool(

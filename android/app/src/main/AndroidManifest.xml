@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Reading shared files on older Android; scoped storage on 33+ needs no broad read. -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <!-- Tool first-open picker shows recent photos/videos (photo_manager). On 14+
+         the user may grant only selected items (READ_MEDIA_VISUAL_USER_SELECTED). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
     <!-- from-url (WebView print) + Phase 2 model downloads. All processing stays on-device. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Long on-device jobs (LLM turn, transcode, model download) keep running

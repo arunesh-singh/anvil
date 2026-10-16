@@ -10,5 +10,6 @@ class MainActivity : FlutterActivity() {
         ImageChannel.register(this, messenger)
         PdfChannel.register(this, messenger)
         ForegroundChannel.register(this, messenger)
+        ClipboardChannel.register(this, messenger)
     }
 }

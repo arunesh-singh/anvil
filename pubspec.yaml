@@ -38,6 +38,8 @@ dependencies:
   get_it: ^9.2.1
   file_picker: ^13.0.0
   image_picker: ^1.2.3
+  photo_manager: ^3.12.0 # Tool first-open picker: "Recent on this phone" grid (READ_MEDIA_IMAGES/VIDEO, partial access on 14+)
+  video_player: ^2.14.1 # Trim / GIF screens: inline playback of the selected window
   share_plus: ^13.3.0
   receive_sharing_intent: ^1.9.0 # needs compileSdk 37 (android/app/build.gradle.kts)
   path_provider: ^2.1.6
@@ -60,6 +62,7 @@ dependencies:
   google_mlkit_text_recognition: ^0.17.1 # Phase 1.5: OCR
   google_mlkit_image_labeling: ^0.16.1 # Phase 1.5: on-device image recognition (agent "find …")
   google_mlkit_translation: ^0.15.1 # Phase 1.5: image translate
+  google_mlkit_language_id: ^0.15.1 # Translate image: auto-detect the source language of the OCR text
   onnxruntime: ^1.4.1 # Phase 1.5: upscale/inpaint/colorize/deblur
   sherpa_onnx: ^1.13.8 # Phase 1.5: ASR transcribe/subtitles
   flutter_gemma: ^1.8.2 # Phase 3: on-device Gemma (write tools + agent)
